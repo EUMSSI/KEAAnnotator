@@ -11,12 +11,14 @@ import org.apache.uima.cas.impl.TypeImpl;
 import org.apache.uima.cas.Type;
 import org.apache.uima.cas.impl.FeatureImpl;
 import org.apache.uima.cas.Feature;
+import org.apache.uima.jcas.tcas.DocumentAnnotation_Type;
+
 import org.apache.uima.jcas.tcas.Annotation_Type;
 
 /** 
- * Updated by JCasGen Wed Nov 12 16:13:53 CET 2014
+ * Updated by JCasGen Fri Oct 02 12:08:57 CEST 2015
  * @generated */
-public class KeyPhraseAnnotation_Type extends Annotation_Type {
+public class KeyPhraseAnnotation_Type extends DocumentAnnotation_Type {
   /** @generated 
    * @return the generator for this type
    */

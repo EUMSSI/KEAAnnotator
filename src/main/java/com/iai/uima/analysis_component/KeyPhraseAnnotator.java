@@ -1,7 +1,18 @@
 package com.iai.uima.analysis_component;
 
+import static org.apache.uima.fit.util.JCasUtil.select;
+
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.ArrayList;
-import java.util.List;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Hashtable;
+import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,19 +33,24 @@ import org.apache.uima.UimaContext;
 import org.apache.uima.fit.component.JCasAnnotator_ImplBase;
 import org.apache.uima.analysis_engine.AnalysisEngineProcessException;
 import org.apache.uima.fit.descriptor.ConfigurationParameter;
-import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 import org.apache.uima.resource.ResourceInitializationException;
 
 import com.iai.uima.jcas.tcas.KeyPhraseAnnotation;
+import com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated;
+import com.iai.uima.jcas.tcas.KeyPhraseAnnotationEnriched;
+import com.iai.uima.jcas.tcas.KeyPhraseAnnotationReplaced;
 
-import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Lemma;
+import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.ADJ;
+import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.ADV;
+import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.N;
+import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.V;
+import de.tudarmstadt.ukp.dkpro.core.api.ner.type.*;
 
 public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 
 	KEAKeyphraseExtractor ke = new KEAKeyphraseExtractor();
 
-	private Pattern phrasePattern;
 	private static String KEA_HOME = System.getProperty("KEA_HOME");
 
 	public static final String PARAM_LANGUAGE = "language";
@@ -42,8 +58,32 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	private String LANGUAGE;
 
 	public static final String PARAM_KEYPHRASE_RATIO = "ratioOfKeyPhrases";
-	@ConfigurationParameter(name = PARAM_KEYPHRASE_RATIO, defaultValue = "75")
+	@ConfigurationParameter(name = PARAM_KEYPHRASE_RATIO, defaultValue = "200")
 	private int KEAPHRASE_RATIO;
+
+	public static final String PARAM_ADJ_NOUN_LIST = "adjNounList";
+	@ConfigurationParameter(name = PARAM_ADJ_NOUN_LIST, defaultValue = "data/wordlists/ADJ-NOUN-relation.final")
+	private String ADJ_NOUN_LIST;
+
+	private Hashtable<String, String> adj_noun;
+
+	public static final String PARAM_CITY_COUNTRY_LIST = "cityCountryList";
+	@ConfigurationParameter(name = PARAM_CITY_COUNTRY_LIST, defaultValue = "data/wordlists/city-country-relation.final")
+	private String CITY_COUNTRY_LIST;
+
+	private Hashtable<String, String> city_country;
+
+	public static final String PARAM_COUNTRY_REGION_LIST = "countryRegionList";
+	@ConfigurationParameter(name = PARAM_COUNTRY_REGION_LIST, defaultValue = "data/wordlists/country-region-relation.final")
+	private String COUNTRY_REGION_LIST;
+
+	private Hashtable<String, String> country_region;
+
+	public static final String PARAM_ABBREV_LONG_LIST = "abbrevLongList";
+	@ConfigurationParameter(name = PARAM_ABBREV_LONG_LIST, defaultValue = "data/wordlists/abbrev_long.final")
+	private String ABBREV_LONG_LIST;
+
+	private Hashtable<String, String> abbrev_long;
 
 	private Stemmer getStemmer(String lang) {
 		return lang.equals("es") ? new SpanishStemmer()
@@ -63,7 +103,61 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	public void initialize(UimaContext aContext)
 			throws ResourceInitializationException {
 		super.initialize(aContext);
-		
+
+		BufferedReader read_adj_noun;
+		BufferedReader read_city_country;
+		BufferedReader read_country_region;
+		BufferedReader read_abbrev_long;
+
+		String line;
+
+		try {
+
+			read_adj_noun = new BufferedReader(new FileReader(new File(
+					ADJ_NOUN_LIST)));
+			read_city_country = new BufferedReader(new FileReader(new File(
+					CITY_COUNTRY_LIST)));
+			read_country_region = new BufferedReader(new FileReader(new File(
+					COUNTRY_REGION_LIST)));
+			read_abbrev_long = new BufferedReader(new FileReader(new File(
+					ABBREV_LONG_LIST)));
+
+			adj_noun = new Hashtable<String, String>();
+
+			while ((line = read_adj_noun.readLine()) != null) {
+				String[] content = line.split("\t");
+				adj_noun.put(content[0], content[1]);
+			}
+			read_adj_noun.close();
+
+			city_country = new Hashtable<String, String>();
+
+			while ((line = read_city_country.readLine()) != null) {
+				String[] content = line.split("\t");
+				city_country.put(content[0], content[1]);
+			}
+			read_city_country.close();
+
+			country_region = new Hashtable<String, String>();
+
+			while ((line = read_country_region.readLine()) != null) {
+				String[] content = line.split("\t");
+				country_region.put(content[0], content[1]);
+			}
+			read_country_region.close();
+
+			abbrev_long = new Hashtable<String, String>();
+
+			while ((line = read_abbrev_long.readLine()) != null) {
+				String[] content = line.split("\t");
+				abbrev_long.put(content[0], content[1]);
+			}
+			read_abbrev_long.close();
+
+		} catch (IOException e1) {
+			throw new ResourceInitializationException(e1);
+		}
+
 		ke = new KEAKeyphraseExtractor();
 
 		// A. required arguments (no defaults):
@@ -113,6 +207,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+
 	}
 
 	@Override
@@ -124,27 +219,190 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 
 		ArrayList<KeyPhrase> keyPhrases = ke.extractKeyphrasesToList(aJCas
 				.getDocumentText());
-
+		
+		Collections.sort(keyPhrases, new KeyPhraseComparator());
+		
+		HashSet<KeyPhrase> deprecatedKeyPhrases = new HashSet<KeyPhrase>();
+		
 		for (KeyPhrase kp : keyPhrases) {
-			phrasePattern = Pattern.compile(kp.getUnstemmed());
-			Matcher matcher = phrasePattern.matcher(aJCas.getDocumentText());
-			while (matcher.find()) {
-				List<Lemma> lemmata = JCasUtil.selectCovered(aJCas,
-						Lemma.class, matcher.start(), matcher.end());
+			
+			boolean containsStopword = false;
+			boolean isContainedInLargerKeyprase = false;
+			boolean isContainedInDeprecatedKeyPhrase = false;
+			boolean isDeprecatedEndsWithAdjective = false;
+			boolean isDeprecatedEndsWithFiniteVerb = false;
+			/* Depricated keyphrase */
+			boolean isKeyPhraseDeprecated = false;
+			/* Replaced keyphrase */
+			boolean isKeyPhraseReplaced = false;
+			/* Enhriched Keyphrase */
+			boolean isKeyPhraseEnriched = false;
+			
+			boolean isEnrichedWithAbbreviation = false;
+			boolean isEnrichedWithCountry = false;
+			boolean isEnrichedWithLongForm = false;
+			boolean isEnrichedWithRegion = false;
+			
+			String keyPhraseReplacee = kp.getUnstemmed();
 
-				if (lemmata.size() > 0) {
-					Lemma first = lemmata.get(0);
-					Lemma last = lemmata.get(lemmata.size() - 1);
-					KeyPhraseAnnotation annotation = new KeyPhraseAnnotation(
-							aJCas);
-					annotation.setBegin(first.getBegin());
-					annotation.setEnd(last.getEnd());
-					annotation.setKeyPhrase(kp.getUnstemmed());
-					annotation.setProbability(kp.getProbability());
-					annotation.setStem(kp.getStemmed());
-					annotation.setRank(kp.getRank());
-					annotation.addToIndexes();
+			String[] split = kp.getUnstemmed().split(" ");
+			for (String sw : split) {
+				if (ke.getStopwords().isStopword(sw))
+					isKeyPhraseDeprecated = containsStopword = true;
+			}
+			
+			Collection<ADJ> adjs = select(aJCas, ADJ.class);
+			Collection<V> verbs = select(aJCas, V.class);
+			Collection<ADV> adverbs = select(aJCas, ADV.class);
+			
+			HashSet<ADJ> adjsList = new HashSet<ADJ>(adjs);
+			HashSet<V> verbsList = new HashSet<V>(verbs);
+			HashSet<ADV> adverbsList = new HashSet<ADV>(adverbs);
+			
+			for (N noun : select(aJCas, N.class)) {
+				for (ADJ adj : adjs)
+					if (!noun.getCoveredText().equalsIgnoreCase(
+							adj.getCoveredText()))
+						adjsList.remove(adj);
+				for (V verb : verbs)
+					if (!noun.getCoveredText().equalsIgnoreCase(
+							verb.getCoveredText()))
+						verbsList.remove(verb);
+				for (ADV adv : adverbs)
+					if (!noun.getCoveredText().equalsIgnoreCase(
+							adv.getCoveredText()))
+						adverbsList.remove(adv);
+			}
+
+			for (ADJ adj : adjsList)
+				if ((adj.getPosValue().equals("JJ")
+						|| adj.getPosValue().equals("JJS") || adj.getPosValue()
+						.equals("JJR"))
+						&& kp.getUnstemmed().endsWith(adj.getCoveredText().toLowerCase())
+						&& !kp.getUnstemmed().equalsIgnoreCase(adj.getCoveredText()))
+					isDeprecatedEndsWithAdjective = isKeyPhraseDeprecated = true;
+			for (ADV adv : adverbsList)
+				if (kp.getUnstemmed().endsWith(adv.getCoveredText().toLowerCase())
+						&& !kp.getUnstemmed().equalsIgnoreCase(adv.getCoveredText()))
+					isDeprecatedEndsWithAdjective = isKeyPhraseDeprecated = true;
+			for (V finV : verbsList)
+				if ((finV.getPosValue().equals("VBD")
+						|| finV.getPosValue().equals("VBZ")
+						|| finV.getPosValue().equals("VBP")
+						|| finV.getPosValue().equals("VB") || finV
+						.getPosValue().equals("VBN"))
+						&& kp.getUnstemmed().contains(finV.getCoveredText().toLowerCase())
+						&& kp.getUnstemmed().equalsIgnoreCase(finV.getCoveredText()))
+					isDeprecatedEndsWithFiniteVerb  = isKeyPhraseDeprecated = true;
+			
+			for (String adj : adj_noun.keySet())
+				if (adj.equalsIgnoreCase(kp.getUnstemmed())){
+					keyPhraseReplacee = adj_noun.get(adj);
+					isKeyPhraseReplaced = true;
 				}
+
+			for (String country : country_region.keySet())
+				if (country.equalsIgnoreCase(kp.getUnstemmed())){
+					keyPhraseReplacee = country_region.get(country);
+					isKeyPhraseEnriched = true;
+					isEnrichedWithRegion = true;
+				}
+			
+			for (String city : city_country.keySet())
+				if (city.equalsIgnoreCase(kp.getUnstemmed())){
+					keyPhraseReplacee = city_country.get(city);
+					isKeyPhraseEnriched = true;
+					isEnrichedWithCountry = true;
+				}
+
+			for (String abbrev : abbrev_long.keySet())
+				if (abbrev.equalsIgnoreCase(kp.getUnstemmed())){
+					keyPhraseReplacee = abbrev_long.get(abbrev);
+					isKeyPhraseEnriched = true;
+					isEnrichedWithLongForm = true;
+				}
+			
+			for (Entry<String, String> entry : abbrev_long.entrySet())
+				if (entry.getValue().equalsIgnoreCase(kp.getUnstemmed())){
+					keyPhraseReplacee = entry.getKey();
+					isKeyPhraseEnriched = true;
+					isEnrichedWithAbbreviation = true;
+				}
+			
+			if (isKeyPhraseDeprecated)
+				deprecatedKeyPhrases.add(kp);
+			
+			Matcher matcher = Pattern.compile(kp.getUnstemmed()).matcher(
+					aJCas.getDocumentText());
+			
+			Collection<KeyPhraseAnnotation> addedKeyPhrases = select(aJCas, KeyPhraseAnnotation.class);
+			
+			for (KeyPhraseAnnotation other : addedKeyPhrases) {
+				if ( other.getKeyPhrase().toLowerCase().contains(kp.getUnstemmed().toLowerCase())
+					&&	!other.getKeyPhrase().equalsIgnoreCase(kp.getUnstemmed())){
+//					&& 	!isKeyPhraseEnriched && !isKeyPhraseReplaced){
+//						if (deprecatedKeyPhrases.contains(other))
+//							isKeyPhraseDeprecated = isContainedInDeprecatedKeyPhrase = true;
+						 if (other.getRank() < kp.getRank())
+							isKeyPhraseDeprecated = isContainedInLargerKeyprase = true;
+						 else
+							 continue;
+				}
+				else if ( kp.getUnstemmed().toLowerCase().contains(other.getKeyPhrase().toLowerCase())
+						&&	!kp.getUnstemmed().equalsIgnoreCase(other.getKeyPhrase())){
+					if (other.getRank() > kp.getRank())
+						isKeyPhraseDeprecated = isContainedInLargerKeyprase = true;
+					 else
+						 continue;
+				}
+			}
+			
+			KeyPhraseAnnotation annotation;
+
+			while (matcher.find()) {
+
+				if (isKeyPhraseDeprecated) {
+					annotation = new KeyPhraseAnnotationDeprecated(aJCas);
+					((KeyPhraseAnnotationDeprecated) annotation)
+							.setContainsStopword(containsStopword);
+					((KeyPhraseAnnotationDeprecated) annotation)
+							.setEndsWithAdjective(isDeprecatedEndsWithAdjective);
+					((KeyPhraseAnnotationDeprecated) annotation)
+							.setEndsWithFiniteVerb(isDeprecatedEndsWithFiniteVerb);
+					((KeyPhraseAnnotationDeprecated) annotation)
+							.setEndsWithAdverb(isDeprecatedEndsWithAdjective);
+					((KeyPhraseAnnotationDeprecated) annotation)
+						.setIsContainedInLongerKeyPhrase(isContainedInLargerKeyprase);
+					((KeyPhraseAnnotationDeprecated) annotation)
+						.setIsContainedInDeprecatedKeyPhrase(isContainedInDeprecatedKeyPhrase);
+				} else if (isKeyPhraseReplaced) {
+					annotation = new KeyPhraseAnnotationReplaced(aJCas);
+					((KeyPhraseAnnotationReplaced) annotation)
+						.setIsAdjectiveReplacedWithNoun(true);
+					((KeyPhraseAnnotationReplaced) annotation)
+						.setReplacee(keyPhraseReplacee);
+				} else if (isKeyPhraseEnriched) {
+					annotation = new KeyPhraseAnnotationEnriched(aJCas);
+					((KeyPhraseAnnotationEnriched) annotation)
+							.setEnrichedWithAbbreviation(isEnrichedWithAbbreviation);
+					((KeyPhraseAnnotationEnriched) annotation)
+							.setEnrichedWithCountry(isEnrichedWithCountry);
+					((KeyPhraseAnnotationEnriched) annotation)
+							.setEnrichedWithLongForm(isEnrichedWithLongForm);
+					((KeyPhraseAnnotationEnriched) annotation)
+							.setEnrichedWithRegion(isEnrichedWithRegion);
+					((KeyPhraseAnnotationEnriched) annotation)
+							.setEnrichment(keyPhraseReplacee);
+				} else
+					annotation = new KeyPhraseAnnotation(aJCas);
+				
+				annotation.setKeyPhrase(kp.getUnstemmed());
+				annotation.setProbability(kp.getProbability());
+				annotation.setStem(kp.getStemmed());
+				annotation.setRank(kp.getRank());
+				annotation.setBegin(matcher.start());
+				annotation.setEnd(matcher.end());
+				annotation.addToIndexes();
 			}
 		}
 	}
@@ -156,5 +414,13 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	public void setKEAKeyphraseExtractor(KEAKeyphraseExtractor ke) {
 		this.ke = ke;
 	}
+	
+	private class KeyPhraseComparator implements Comparator<KeyPhrase> {
 
+		@Override
+		public int compare(KeyPhrase a, KeyPhrase b) {
+			return b.getUnstemmed().split(" ").length - a.getUnstemmed().split(" ").length ;
+		}
+		
+	}
 }

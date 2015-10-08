@@ -6,14 +6,17 @@ package com.iai.uima.jcas.tcas;
 import org.apache.uima.jcas.JCas; 
 import org.apache.uima.jcas.JCasRegistry;
 import org.apache.uima.jcas.cas.TOP_Type;
+import org.apache.uima.jcas.tcas.DocumentAnnotation;
+
+
 import org.apache.uima.jcas.tcas.Annotation;
 
 
 /** 
- * Updated by JCasGen Wed Nov 12 16:13:53 CET 2014
- * XML source: D:/merlin/workspace_eumssi/EUMSSI Annotators/desc/KeyPhraseDescriptor.xml
+ * Updated by JCasGen Fri Oct 02 12:08:57 CEST 2015
+ * XML source: D:/merlin/GitHub/KEAAnnotator/desc/KeyPhraseDescriptor.xml
  * @generated */
-public class KeyPhraseAnnotation extends Annotation {
+public class KeyPhraseAnnotation extends DocumentAnnotation {
   /** @generated
    * @ordered 
    */
