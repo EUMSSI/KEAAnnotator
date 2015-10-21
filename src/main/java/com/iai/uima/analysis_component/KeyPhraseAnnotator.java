@@ -3,9 +3,8 @@ package com.iai.uima.analysis_component;
 import static org.apache.uima.fit.util.JCasUtil.select;
 
 import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,7 +44,6 @@ import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.ADJ;
 import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.ADV;
 import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.N;
 import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.V;
-import de.tudarmstadt.ukp.dkpro.core.api.ner.type.*;
 
 public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 
@@ -58,29 +56,29 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	private String LANGUAGE;
 
 	public static final String PARAM_KEYPHRASE_RATIO = "ratioOfKeyPhrases";
-	@ConfigurationParameter(name = PARAM_KEYPHRASE_RATIO, defaultValue = "200")
+	@ConfigurationParameter(name = PARAM_KEYPHRASE_RATIO, defaultValue = "50")
 	private int KEAPHRASE_RATIO;
 
 	public static final String PARAM_ADJ_NOUN_LIST = "adjNounList";
-	@ConfigurationParameter(name = PARAM_ADJ_NOUN_LIST, defaultValue = "data/wordlists/ADJ-NOUN-relation.final")
+	@ConfigurationParameter(name = PARAM_ADJ_NOUN_LIST, defaultValue = "/wordlists/ADJ-NOUN-relation.final")
 	private String ADJ_NOUN_LIST;
 
 	private Hashtable<String, String> adj_noun;
 
 	public static final String PARAM_CITY_COUNTRY_LIST = "cityCountryList";
-	@ConfigurationParameter(name = PARAM_CITY_COUNTRY_LIST, defaultValue = "data/wordlists/city-country-relation.final")
+	@ConfigurationParameter(name = PARAM_CITY_COUNTRY_LIST,  mandatory=false, defaultValue = "/wordlists/city-country-relation.final")
 	private String CITY_COUNTRY_LIST;
 
 	private Hashtable<String, String> city_country;
 
 	public static final String PARAM_COUNTRY_REGION_LIST = "countryRegionList";
-	@ConfigurationParameter(name = PARAM_COUNTRY_REGION_LIST, defaultValue = "data/wordlists/country-region-relation.final")
+	@ConfigurationParameter(name = PARAM_COUNTRY_REGION_LIST,  mandatory=false, defaultValue = "/wordlists/country-region-relation.final")
 	private String COUNTRY_REGION_LIST;
 
 	private Hashtable<String, String> country_region;
 
 	public static final String PARAM_ABBREV_LONG_LIST = "abbrevLongList";
-	@ConfigurationParameter(name = PARAM_ABBREV_LONG_LIST, defaultValue = "data/wordlists/abbrev_long.final")
+	@ConfigurationParameter(name = PARAM_ABBREV_LONG_LIST, mandatory=false ,defaultValue = "/wordlists/abbrev_long.final")
 	private String ABBREV_LONG_LIST;
 
 	private Hashtable<String, String> abbrev_long;
@@ -112,16 +110,16 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		String line;
 
 		try {
-
-			read_adj_noun = new BufferedReader(new FileReader(new File(
-					ADJ_NOUN_LIST)));
-			read_city_country = new BufferedReader(new FileReader(new File(
-					CITY_COUNTRY_LIST)));
-			read_country_region = new BufferedReader(new FileReader(new File(
-					COUNTRY_REGION_LIST)));
-			read_abbrev_long = new BufferedReader(new FileReader(new File(
-					ABBREV_LONG_LIST)));
-
+			
+			read_adj_noun = new BufferedReader(new InputStreamReader(
+					getClass().getResourceAsStream(ADJ_NOUN_LIST)));
+			read_city_country = new BufferedReader(new InputStreamReader(
+					getClass().getResourceAsStream(CITY_COUNTRY_LIST)));
+			read_country_region = new BufferedReader(new InputStreamReader(
+					getClass().getResourceAsStream(COUNTRY_REGION_LIST)));
+			read_abbrev_long = new BufferedReader(new InputStreamReader(
+					getClass().getResourceAsStream(ABBREV_LONG_LIST)));
+			
 			adj_noun = new Hashtable<String, String>();
 
 			while ((line = read_adj_noun.readLine()) != null) {
