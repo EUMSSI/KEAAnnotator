@@ -10,8 +10,8 @@ import org.apache.uima.jcas.cas.TOP_Type;
 
 
 /** 
- * Updated by JCasGen Fri Oct 02 12:08:57 CEST 2015
- * XML source: D:/merlin/GitHub/KEAAnnotator/desc/KeyPhraseDescriptor.xml
+ * Updated by JCasGen Wed Oct 28 11:51:42 CET 2015
+ * XML source: D:/merlin/GitHub/KEAAnnotator/src/main/resources/desc/KeyPhraseDescriptor.xml
  * @generated */
 public class KeyPhraseAnnotationEnriched extends KeyPhraseAnnotation {
   /** @generated

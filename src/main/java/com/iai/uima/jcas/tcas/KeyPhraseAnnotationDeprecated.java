@@ -10,8 +10,8 @@ import org.apache.uima.jcas.cas.TOP_Type;
 
 
 /** 
- * Updated by JCasGen Fri Oct 02 12:08:57 CEST 2015
- * XML source: D:/merlin/GitHub/KEAAnnotator/desc/KeyPhraseDescriptor.xml
+ * Updated by JCasGen Wed Oct 28 11:51:42 CET 2015
+ * XML source: D:/merlin/GitHub/KEAAnnotator/src/main/resources/desc/KeyPhraseDescriptor.xml
  * @generated */
 public class KeyPhraseAnnotationDeprecated extends KeyPhraseAnnotation {
   /** @generated
@@ -120,47 +120,47 @@ public class KeyPhraseAnnotationDeprecated extends KeyPhraseAnnotation {
    
     
   //*--------------*
-  //* Feature: endsWithAdverb
+  //* Feature: containsAdverb
 
-  /** getter for endsWithAdverb - gets 
+  /** getter for containsAdverb - gets 
    * @generated
    * @return value of the feature 
    */
-  public boolean getEndsWithAdverb() {
-    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_endsWithAdverb == null)
-      jcasType.jcas.throwFeatMissing("endsWithAdverb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    return jcasType.ll_cas.ll_getBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_endsWithAdverb);}
+  public boolean getContainsAdverb() {
+    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_containsAdverb == null)
+      jcasType.jcas.throwFeatMissing("containsAdverb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    return jcasType.ll_cas.ll_getBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_containsAdverb);}
     
-  /** setter for endsWithAdverb - sets  
+  /** setter for containsAdverb - sets  
    * @generated
    * @param v value to set into the feature 
    */
-  public void setEndsWithAdverb(boolean v) {
-    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_endsWithAdverb == null)
-      jcasType.jcas.throwFeatMissing("endsWithAdverb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    jcasType.ll_cas.ll_setBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_endsWithAdverb, v);}    
+  public void setContainsAdverb(boolean v) {
+    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_containsAdverb == null)
+      jcasType.jcas.throwFeatMissing("containsAdverb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    jcasType.ll_cas.ll_setBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_containsAdverb, v);}    
    
     
   //*--------------*
-  //* Feature: endsWithFiniteVerb
+  //* Feature: containsFiniteVerb
 
-  /** getter for endsWithFiniteVerb - gets 
+  /** getter for containsFiniteVerb - gets 
    * @generated
    * @return value of the feature 
    */
-  public boolean getEndsWithFiniteVerb() {
-    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_endsWithFiniteVerb == null)
-      jcasType.jcas.throwFeatMissing("endsWithFiniteVerb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    return jcasType.ll_cas.ll_getBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_endsWithFiniteVerb);}
+  public boolean getContainsFiniteVerb() {
+    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_containsFiniteVerb == null)
+      jcasType.jcas.throwFeatMissing("containsFiniteVerb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    return jcasType.ll_cas.ll_getBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_containsFiniteVerb);}
     
-  /** setter for endsWithFiniteVerb - sets  
+  /** setter for containsFiniteVerb - sets  
    * @generated
    * @param v value to set into the feature 
    */
-  public void setEndsWithFiniteVerb(boolean v) {
-    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_endsWithFiniteVerb == null)
-      jcasType.jcas.throwFeatMissing("endsWithFiniteVerb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    jcasType.ll_cas.ll_setBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_endsWithFiniteVerb, v);}    
+  public void setContainsFiniteVerb(boolean v) {
+    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_containsFiniteVerb == null)
+      jcasType.jcas.throwFeatMissing("containsFiniteVerb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    jcasType.ll_cas.ll_setBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_containsFiniteVerb, v);}    
    
     
   //*--------------*

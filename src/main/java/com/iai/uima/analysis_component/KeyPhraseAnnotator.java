@@ -228,6 +228,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			boolean isContainedInLargerKeyprase = false;
 			boolean isContainedInDeprecatedKeyPhrase = false;
 			boolean isDeprecatedEndsWithAdjective = false;
+			boolean isDeprecatedContainsAdverb = false;
 			boolean isDeprecatedEndsWithFiniteVerb = false;
 			/* Depricated keyphrase */
 			boolean isKeyPhraseDeprecated = false;
@@ -282,7 +283,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			for (ADV adv : adverbsList)
 				if (kp.getUnstemmed().endsWith(adv.getCoveredText().toLowerCase())
 						&& !kp.getUnstemmed().equalsIgnoreCase(adv.getCoveredText()))
-					isDeprecatedEndsWithAdjective = isKeyPhraseDeprecated = true;
+					isDeprecatedContainsAdverb = isKeyPhraseDeprecated = true;
 			for (V finV : verbsList)
 				if ((finV.getPosValue().equals("VBD")
 						|| finV.getPosValue().equals("VBZ")
@@ -366,9 +367,9 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 					((KeyPhraseAnnotationDeprecated) annotation)
 							.setEndsWithAdjective(isDeprecatedEndsWithAdjective);
 					((KeyPhraseAnnotationDeprecated) annotation)
-							.setEndsWithFiniteVerb(isDeprecatedEndsWithFiniteVerb);
+							.setContainsFiniteVerb(isDeprecatedEndsWithFiniteVerb);
 					((KeyPhraseAnnotationDeprecated) annotation)
-							.setEndsWithAdverb(isDeprecatedEndsWithAdjective);
+							.setContainsAdverb(isDeprecatedContainsAdverb);
 					((KeyPhraseAnnotationDeprecated) annotation)
 						.setIsContainedInLongerKeyPhrase(isContainedInLargerKeyprase);
 					((KeyPhraseAnnotationDeprecated) annotation)

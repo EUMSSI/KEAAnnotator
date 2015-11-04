@@ -13,7 +13,7 @@ import org.apache.uima.cas.impl.FeatureImpl;
 import org.apache.uima.cas.Feature;
 
 /** 
- * Updated by JCasGen Fri Oct 02 12:08:57 CEST 2015
+ * Updated by JCasGen Wed Oct 28 11:51:42 CET 2015
  * @generated */
 public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type {
   /** @generated 
@@ -94,50 +94,50 @@ public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type
   
  
   /** @generated */
-  final Feature casFeat_endsWithAdverb;
+  final Feature casFeat_containsAdverb;
   /** @generated */
-  final int     casFeatCode_endsWithAdverb;
+  final int     casFeatCode_containsAdverb;
   /** @generated
    * @param addr low level Feature Structure reference
    * @return the feature value 
    */ 
-  public boolean getEndsWithAdverb(int addr) {
-        if (featOkTst && casFeat_endsWithAdverb == null)
-      jcas.throwFeatMissing("endsWithAdverb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    return ll_cas.ll_getBooleanValue(addr, casFeatCode_endsWithAdverb);
+  public boolean getContainsAdverb(int addr) {
+        if (featOkTst && casFeat_containsAdverb == null)
+      jcas.throwFeatMissing("containsAdverb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    return ll_cas.ll_getBooleanValue(addr, casFeatCode_containsAdverb);
   }
   /** @generated
    * @param addr low level Feature Structure reference
    * @param v value to set 
    */    
-  public void setEndsWithAdverb(int addr, boolean v) {
-        if (featOkTst && casFeat_endsWithAdverb == null)
-      jcas.throwFeatMissing("endsWithAdverb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    ll_cas.ll_setBooleanValue(addr, casFeatCode_endsWithAdverb, v);}
+  public void setContainsAdverb(int addr, boolean v) {
+        if (featOkTst && casFeat_containsAdverb == null)
+      jcas.throwFeatMissing("containsAdverb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    ll_cas.ll_setBooleanValue(addr, casFeatCode_containsAdverb, v);}
     
   
  
   /** @generated */
-  final Feature casFeat_endsWithFiniteVerb;
+  final Feature casFeat_containsFiniteVerb;
   /** @generated */
-  final int     casFeatCode_endsWithFiniteVerb;
+  final int     casFeatCode_containsFiniteVerb;
   /** @generated
    * @param addr low level Feature Structure reference
    * @return the feature value 
    */ 
-  public boolean getEndsWithFiniteVerb(int addr) {
-        if (featOkTst && casFeat_endsWithFiniteVerb == null)
-      jcas.throwFeatMissing("endsWithFiniteVerb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    return ll_cas.ll_getBooleanValue(addr, casFeatCode_endsWithFiniteVerb);
+  public boolean getContainsFiniteVerb(int addr) {
+        if (featOkTst && casFeat_containsFiniteVerb == null)
+      jcas.throwFeatMissing("containsFiniteVerb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    return ll_cas.ll_getBooleanValue(addr, casFeatCode_containsFiniteVerb);
   }
   /** @generated
    * @param addr low level Feature Structure reference
    * @param v value to set 
    */    
-  public void setEndsWithFiniteVerb(int addr, boolean v) {
-        if (featOkTst && casFeat_endsWithFiniteVerb == null)
-      jcas.throwFeatMissing("endsWithFiniteVerb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    ll_cas.ll_setBooleanValue(addr, casFeatCode_endsWithFiniteVerb, v);}
+  public void setContainsFiniteVerb(int addr, boolean v) {
+        if (featOkTst && casFeat_containsFiniteVerb == null)
+      jcas.throwFeatMissing("containsFiniteVerb", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    ll_cas.ll_setBooleanValue(addr, casFeatCode_containsFiniteVerb, v);}
     
   
  
@@ -209,12 +209,12 @@ public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type
     casFeatCode_endsWithAdjective  = (null == casFeat_endsWithAdjective) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_endsWithAdjective).getCode();
 
  
-    casFeat_endsWithAdverb = jcas.getRequiredFeatureDE(casType, "endsWithAdverb", "uima.cas.Boolean", featOkTst);
-    casFeatCode_endsWithAdverb  = (null == casFeat_endsWithAdverb) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_endsWithAdverb).getCode();
+    casFeat_containsAdverb = jcas.getRequiredFeatureDE(casType, "containsAdverb", "uima.cas.Boolean", featOkTst);
+    casFeatCode_containsAdverb  = (null == casFeat_containsAdverb) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_containsAdverb).getCode();
 
  
-    casFeat_endsWithFiniteVerb = jcas.getRequiredFeatureDE(casType, "endsWithFiniteVerb", "uima.cas.Boolean", featOkTst);
-    casFeatCode_endsWithFiniteVerb  = (null == casFeat_endsWithFiniteVerb) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_endsWithFiniteVerb).getCode();
+    casFeat_containsFiniteVerb = jcas.getRequiredFeatureDE(casType, "containsFiniteVerb", "uima.cas.Boolean", featOkTst);
+    casFeatCode_containsFiniteVerb  = (null == casFeat_containsFiniteVerb) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_containsFiniteVerb).getCode();
 
  
     casFeat_isContainedInLongerKeyPhrase = jcas.getRequiredFeatureDE(casType, "isContainedInLongerKeyPhrase", "uima.cas.Boolean", featOkTst);

@@ -116,12 +116,12 @@
 							<rangeTypeName>uima.cas.Boolean</rangeTypeName>
 						</featureDescription>
 						<featureDescription>
-							<name>endsWithAdverb</name>
+							<name>containsAdverb</name>
 							<description/>
 							<rangeTypeName>uima.cas.Boolean</rangeTypeName>
 						</featureDescription>
 						<featureDescription>
-							<name>endsWithFiniteVerb</name>
+							<name>containsFiniteVerb</name>
 							<description/>
 							<rangeTypeName>uima.cas.Boolean</rangeTypeName>
 						</featureDescription>
