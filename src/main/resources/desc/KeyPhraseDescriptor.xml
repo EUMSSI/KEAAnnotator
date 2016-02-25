@@ -20,7 +20,19 @@
 				<multiValued>false</multiValued>
 				<mandatory>false</mandatory>
 			</configurationParameter>
-		</configurationParameters>
+		<configurationParameter>
+        <name>stopwordList</name>
+        <type>String</type>
+        <multiValued>false</multiValued>
+        <mandatory>false</mandatory>
+      </configurationParameter>
+    <configurationParameter>
+        <name>modelLocation</name>
+        <type>String</type>
+        <multiValued>false</multiValued>
+        <mandatory>false</mandatory>
+      </configurationParameter>
+    </configurationParameters>
 		<configurationParameterSettings/>
 		<typeSystemDescription>
 			<types>

@@ -55,6 +55,10 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	@ConfigurationParameter(name = PARAM_LANGUAGE, defaultValue = "en")
 	private String LANGUAGE;
 
+	public static final String PARAM_MODEL_LOCATION = "modelLocation";
+	@ConfigurationParameter(name = PARAM_MODEL_LOCATION, mandatory = false)
+	private String MODEL_LOCATION;
+	
 	public static final String PARAM_KEYPHRASE_RATIO = "ratioOfKeyPhrases";
 	@ConfigurationParameter(name = PARAM_KEYPHRASE_RATIO, defaultValue = "50")
 	private int KEAPHRASE_RATIO;
@@ -80,6 +84,10 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	public static final String PARAM_ABBREV_LONG_LIST = "abbrevLongList";
 	@ConfigurationParameter(name = PARAM_ABBREV_LONG_LIST, mandatory=false ,defaultValue = "/wordlists/abbrev_long.final")
 	private String ABBREV_LONG_LIST;
+	
+	public static final String PARAM_STOPWORDLIST = "stopwordList";
+	@ConfigurationParameter(name = PARAM_STOPWORDLIST, mandatory=false)
+	private String STOPWORD_LIST;
 
 	private Hashtable<String, String> abbrev_long;
 
@@ -90,11 +98,11 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 								.equals("de") ? new GermanStemmer() : null;
 	}
 
-	private Stopwords getStopwords(String lang) {
-		return lang.equals("es") ? new StopwordsSpanish()
-				: lang.equals("fr") ? new StopwordsFrench()
-						: lang.equals("en") ? new StopwordsEnglish() : lang
-								.equals("de") ? new StopwordsGerman() : null;
+	private Stopwords getStopwords(String lang, String path) {
+		return lang.equals("es") ? new StopwordsSpanish(path)
+				: lang.equals("fr") ? new StopwordsFrench(path)
+						: lang.equals("en") ? new StopwordsEnglish(path) : lang
+								.equals("de") ? new StopwordsGerman(path) : null;
 	}
 
 	@Override
@@ -106,7 +114,11 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		BufferedReader read_city_country;
 		BufferedReader read_country_region;
 		BufferedReader read_abbrev_long;
-
+		
+		if (MODEL_LOCATION == null)
+			MODEL_LOCATION = KEA_HOME + "/data/models/" + LANGUAGE + "/model";
+		if (STOPWORD_LIST == null)
+			STOPWORD_LIST = KEA_HOME + "/data/stopwords/stopwords_" +LANGUAGE+".txt";
 		String line;
 
 		try {
@@ -192,13 +204,13 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		ke.setStemmer(getStemmer(LANGUAGE));
 		// ke.setStemmer(new NoStemmer());
 		// 8. Stopwords
-		ke.setStopwords(getStopwords(LANGUAGE));
+		ke.setStopwords(getStopwords(LANGUAGE, STOPWORD_LIST));
 
 		// 10. Set to true, if you want to compute global dictionaries from the
 		// test collection
 		ke.setBuildGlobal(false);
-
-		ke.setModelName(KEA_HOME + "/data/models/" + LANGUAGE + "/model");
+		
+		ke.setModelName(MODEL_LOCATION);
 
 		try {
 			ke.loadModel();
