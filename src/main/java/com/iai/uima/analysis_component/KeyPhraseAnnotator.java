@@ -136,7 +136,9 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 
 			while ((line = read_adj_noun.readLine()) != null) {
 				String[] content = line.split("\t");
-				adj_noun.put(content[0], content[1]);
+				adj_noun.put(content[0], content[1]); //ORI
+//				System.out.println(getStemmer(LANGUAGE).stemString(content[0]) + content[1]);
+//				adj_noun.put(getStemmer(LANGUAGE).stemString(content[0]), content[1]); //SPnew
 			}
 			read_adj_noun.close();
 
@@ -229,6 +231,8 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 
 		ArrayList<KeyPhrase> keyPhrases = ke.extractKeyphrasesToList(aJCas
 				.getDocumentText());
+
+		
 		
 		Collections.sort(keyPhrases, new KeyPhraseComparator());
 		
@@ -242,7 +246,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			boolean isDeprecatedEndsWithAdjective = false;
 			boolean isDeprecatedContainsAdverb = false;
 			boolean isDeprecatedEndsWithFiniteVerb = false;
-			/* Depricated keyphrase */
+			/* Deprecated keyphrase */
 			boolean isKeyPhraseDeprecated = false;
 			/* Replaced keyphrase */
 			boolean isKeyPhraseReplaced = false;
@@ -270,33 +274,41 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			HashSet<V> verbsList = new HashSet<V>(verbs);
 			HashSet<ADV> adverbsList = new HashSet<ADV>(adverbs);
 			
+			//SP unclear whether the following is needed..
 			for (N noun : select(aJCas, N.class)) {
 				for (ADJ adj : adjs)
-					if (!noun.getCoveredText().equalsIgnoreCase(
+					if (!noun.getCoveredText().equalsIgnoreCase( //NEG correct?
 							adj.getCoveredText()))
 						adjsList.remove(adj);
 				for (V verb : verbs)
-					if (!noun.getCoveredText().equalsIgnoreCase(
+//					if (!noun.getCoveredText().equalsIgnoreCase(  // ORI NEG wrong
+					if (noun.getCoveredText().equalsIgnoreCase(  //SPneu
 							verb.getCoveredText()))
 						verbsList.remove(verb);
-				for (ADV adv : adverbs)
-					if (!noun.getCoveredText().equalsIgnoreCase(
-							adv.getCoveredText()))
-						adverbsList.remove(adv);
+				//SPnew no resctriction on ADV
+//				for (ADV adv : adverbs)
+//					if (noun.getCoveredText().equalsIgnoreCase( //NEG !noun deleted SPnew
+//							adv.getCoveredText()))
+//						adverbsList.remove(adv);
 			}
 
 			for (ADJ adj : adjsList)
+				//keyphrases that end with ADJ are deprecated
 				if ((adj.getPosValue().equals("JJ")
 						|| adj.getPosValue().equals("JJS") || adj.getPosValue()
 						.equals("JJR"))
 						&& kp.getUnstemmed().endsWith(adj.getCoveredText().toLowerCase())
 						&& !kp.getUnstemmed().equalsIgnoreCase(adj.getCoveredText()))
 					isDeprecatedEndsWithAdjective = isKeyPhraseDeprecated = true;
+			//SPnew: keyphrases that contain ADV are deprecated
 			for (ADV adv : adverbsList)
-				if (kp.getUnstemmed().endsWith(adv.getCoveredText().toLowerCase())
-						&& !kp.getUnstemmed().equalsIgnoreCase(adv.getCoveredText()))
+				if (kp.getUnstemmed().contains(adv.getCoveredText().toLowerCase())) //SPnew
+//					if (kp.getUnstemmed().endsWith(adv.getCoveredText().toLowerCase())  //ORI
+//						&& !kp.getUnstemmed().equalsIgnoreCase(adv.getCoveredText()))  //ORI
 					isDeprecatedContainsAdverb = isKeyPhraseDeprecated = true;
-			for (V finV : verbsList)
+			for (V finV : verbsList){
+//				System.out.println("Hello, World FINITE "); //SPnew
+				// keyphrases that are finite verbs are deprecated
 				if ((finV.getPosValue().equals("VBD")
 						|| finV.getPosValue().equals("VBZ")
 						|| finV.getPosValue().equals("VBP")
@@ -305,16 +317,34 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 						&& kp.getUnstemmed().contains(finV.getCoveredText().toLowerCase())
 						&& kp.getUnstemmed().equalsIgnoreCase(finV.getCoveredText()))
 					isDeprecatedEndsWithFiniteVerb  = isKeyPhraseDeprecated = true;
-			
-			for (String adj : adj_noun.keySet())
-				if (adj.equalsIgnoreCase(kp.getUnstemmed())){
+			}
+			for (String adj : adj_noun.keySet()){
+//				if (kp.getUnstemmed().toLowerCase().equals(kp.getStemmed().toLowerCase() + "s")){
+//					System.out.println("Hello, World HACK");
+//				}
+				if (adj.equalsIgnoreCase(kp.getUnstemmed())){ 
 					keyPhraseReplacee = adj_noun.get(adj);
+//					System.out.println("Hello, World Replace adj_noun " +  kp.getUnstemmed() + " " + keyPhraseReplacee);
 					isKeyPhraseReplaced = true;
 				}
-
+				 // HACK to account for Germans -> Germany, the adj_noun list contains only german germany.
+				// if the stemmed and unstemmed version of the adj differs only with respect to a word-final s then
+				// the mapping applies.
+				// Using stemmed versions is too risky since stems are too general crofting -> croft should apply
+				// but croft -> croft or should not apply
+				
+				else if (LANGUAGE == "en" && (kp.getUnstemmed().toLowerCase().equals(kp.getStemmed().toLowerCase() + "s")) && 
+						adj.equalsIgnoreCase(kp.getStemmed())){
+//					    System.out.println("Hello, World HACK" + kp.getStemmed().toString() + " " + keyPhraseReplacee);
+					    keyPhraseReplacee = adj_noun.get(adj);
+					    isKeyPhraseReplaced = true;
+				}
+			}
 			for (String country : country_region.keySet())
 				if (country.equalsIgnoreCase(kp.getUnstemmed())){
 					keyPhraseReplacee = country_region.get(country);
+					//SPneu
+//					System.out.println("Hello, World Replace country_region " + keyPhraseReplacee + kp.getUnstemmed());
 					isKeyPhraseEnriched = true;
 					isEnrichedWithRegion = true;
 				}
@@ -322,6 +352,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			for (String city : city_country.keySet())
 				if (city.equalsIgnoreCase(kp.getUnstemmed())){
 					keyPhraseReplacee = city_country.get(city);
+//					System.out.println("Hello, World Replace city_country " + keyPhraseReplacee + kp.getUnstemmed());
 					isKeyPhraseEnriched = true;
 					isEnrichedWithCountry = true;
 				}
@@ -349,22 +380,39 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			Collection<KeyPhraseAnnotation> addedKeyPhrases = select(aJCas, KeyPhraseAnnotation.class);
 			
 			for (KeyPhraseAnnotation other : addedKeyPhrases) {
-				if ( other.getKeyPhrase().toLowerCase().contains(kp.getUnstemmed().toLowerCase())
-					&&	!other.getKeyPhrase().equalsIgnoreCase(kp.getUnstemmed())){
+//				System.out.println( other.getKeyPhrase().endsWith(" " + kp.getUnstemmed().toLowerCase())); // XXX
+//				if (other.getKeyPhrase().endsWith(" " + kp.getUnstemmed().toLowerCase())){ // tut
+//				if (other.getKeyPhrase().endsWith(" " + kp.getUnstemmed().toLowerCase()) || 
+//						other.getKeyPhrase().startsWith(kp.getUnstemmed().toLowerCase() + " ") || // 
+//						other.getKeyPhrase().contains(" " + kp.getUnstemmed().toLowerCase() + " ")){
+				if ( other.getKeyPhrase().toLowerCase().contains(kp.getUnstemmed().toLowerCase()) //ORI
+					&&	!other.getKeyPhrase().equalsIgnoreCase(kp.getUnstemmed())){  //ORI
 //					&& 	!isKeyPhraseEnriched && !isKeyPhraseReplaced){
 //						if (deprecatedKeyPhrases.contains(other))
 //							isKeyPhraseDeprecated = isContainedInDeprecatedKeyPhrase = true;
-						 if (other.getRank() < kp.getRank())
+						 if (other.getRank() < kp.getRank()){
 							isKeyPhraseDeprecated = isContainedInLargerKeyprase = true;
-						 else
+//							System.out.println("DEPRECATED kp isContainedInLargerKeyprase other: " + kp.getUnstemmed().toLowerCase());
+						 }
+//						 else if (){
+//							 
+//						 }
+						 else {
+//							 System.out.println("ELSE kp isContainedInLargerKeyprase other: kp: " + kp.getUnstemmed().toLowerCase() + " other: " + other.getKeyPhrase());
+						 
 							 continue;
+						 }
 				}
 				else if ( kp.getUnstemmed().toLowerCase().contains(other.getKeyPhrase().toLowerCase())
 						&&	!kp.getUnstemmed().equalsIgnoreCase(other.getKeyPhrase())){
-					if (other.getRank() > kp.getRank())
+					if (other.getRank() > kp.getRank()){
 						isKeyPhraseDeprecated = isContainedInLargerKeyprase = true;
-					 else
+//					    System.out.println("DEPRECATED other isContainedInLargerKeyprase kp");
+					}
+					 else{
+//						 System.out.println("ELSE other isContainedInLargerKeyprase kp: kp: " + kp.getUnstemmed().toLowerCase() + " other: " + other.getKeyPhrase());
 						 continue;
+					 }
 				}
 			}
 			
