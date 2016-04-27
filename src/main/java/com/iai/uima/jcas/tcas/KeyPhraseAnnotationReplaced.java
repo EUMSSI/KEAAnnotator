@@ -10,8 +10,8 @@ import org.apache.uima.jcas.cas.TOP_Type;
 
 
 /** 
- * Updated by JCasGen Wed Oct 28 11:51:42 CET 2015
- * XML source: D:/merlin/GitHub/KEAAnnotator/src/main/resources/desc/KeyPhraseDescriptor.xml
+ * Updated by JCasGen Mon Apr 25 14:01:52 CEST 2016
+ * XML source: D:/susanne/git/KEAAnnotator/src/main/resources/com/iai/uima/jcas/tcas/KeyPhraseTypeSystemDescriptor.xml
  * @generated */
 public class KeyPhraseAnnotationReplaced extends KeyPhraseAnnotation {
   /** @generated
@@ -117,6 +117,28 @@ public class KeyPhraseAnnotationReplaced extends KeyPhraseAnnotation {
     if (KeyPhraseAnnotationReplaced_Type.featOkTst && ((KeyPhraseAnnotationReplaced_Type)jcasType).casFeat_replacee == null)
       jcasType.jcas.throwFeatMissing("replacee", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationReplaced");
     jcasType.ll_cas.ll_setStringValue(addr, ((KeyPhraseAnnotationReplaced_Type)jcasType).casFeatCode_replacee, v);}    
+   
+    
+  //*--------------*
+  //* Feature: isVerbReplacedWithNoun
+
+  /** getter for isVerbReplacedWithNoun - gets 
+   * @generated
+   * @return value of the feature 
+   */
+  public boolean getIsVerbReplacedWithNoun() {
+    if (KeyPhraseAnnotationReplaced_Type.featOkTst && ((KeyPhraseAnnotationReplaced_Type)jcasType).casFeat_isVerbReplacedWithNoun == null)
+      jcasType.jcas.throwFeatMissing("isVerbReplacedWithNoun", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationReplaced");
+    return jcasType.ll_cas.ll_getBooleanValue(addr, ((KeyPhraseAnnotationReplaced_Type)jcasType).casFeatCode_isVerbReplacedWithNoun);}
+    
+  /** setter for isVerbReplacedWithNoun - sets  
+   * @generated
+   * @param v value to set into the feature 
+   */
+  public void setIsVerbReplacedWithNoun(boolean v) {
+    if (KeyPhraseAnnotationReplaced_Type.featOkTst && ((KeyPhraseAnnotationReplaced_Type)jcasType).casFeat_isVerbReplacedWithNoun == null)
+      jcasType.jcas.throwFeatMissing("isVerbReplacedWithNoun", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationReplaced");
+    jcasType.ll_cas.ll_setBooleanValue(addr, ((KeyPhraseAnnotationReplaced_Type)jcasType).casFeatCode_isVerbReplacedWithNoun, v);}    
   }
 
     

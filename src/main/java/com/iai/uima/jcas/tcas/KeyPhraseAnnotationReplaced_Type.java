@@ -13,7 +13,7 @@ import org.apache.uima.cas.impl.FeatureImpl;
 import org.apache.uima.cas.Feature;
 
 /** 
- * Updated by JCasGen Wed Oct 28 11:51:42 CET 2015
+ * Updated by JCasGen Mon Apr 25 14:01:52 CEST 2016
  * @generated */
 public class KeyPhraseAnnotationReplaced_Type extends KeyPhraseAnnotation_Type {
   /** @generated 
@@ -92,6 +92,30 @@ public class KeyPhraseAnnotationReplaced_Type extends KeyPhraseAnnotation_Type {
     ll_cas.ll_setStringValue(addr, casFeatCode_replacee, v);}
     
   
+ 
+  /** @generated */
+  final Feature casFeat_isVerbReplacedWithNoun;
+  /** @generated */
+  final int     casFeatCode_isVerbReplacedWithNoun;
+  /** @generated
+   * @param addr low level Feature Structure reference
+   * @return the feature value 
+   */ 
+  public boolean getIsVerbReplacedWithNoun(int addr) {
+        if (featOkTst && casFeat_isVerbReplacedWithNoun == null)
+      jcas.throwFeatMissing("isVerbReplacedWithNoun", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationReplaced");
+    return ll_cas.ll_getBooleanValue(addr, casFeatCode_isVerbReplacedWithNoun);
+  }
+  /** @generated
+   * @param addr low level Feature Structure reference
+   * @param v value to set 
+   */    
+  public void setIsVerbReplacedWithNoun(int addr, boolean v) {
+        if (featOkTst && casFeat_isVerbReplacedWithNoun == null)
+      jcas.throwFeatMissing("isVerbReplacedWithNoun", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationReplaced");
+    ll_cas.ll_setBooleanValue(addr, casFeatCode_isVerbReplacedWithNoun, v);}
+    
+  
 
 
 
@@ -111,6 +135,10 @@ public class KeyPhraseAnnotationReplaced_Type extends KeyPhraseAnnotation_Type {
  
     casFeat_replacee = jcas.getRequiredFeatureDE(casType, "replacee", "uima.cas.String", featOkTst);
     casFeatCode_replacee  = (null == casFeat_replacee) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_replacee).getCode();
+
+ 
+    casFeat_isVerbReplacedWithNoun = jcas.getRequiredFeatureDE(casType, "isVerbReplacedWithNoun", "uima.cas.Boolean", featOkTst);
+    casFeatCode_isVerbReplacedWithNoun  = (null == casFeat_isVerbReplacedWithNoun) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_isVerbReplacedWithNoun).getCode();
 
   }
 }

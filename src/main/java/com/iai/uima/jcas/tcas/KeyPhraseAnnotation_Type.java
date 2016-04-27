@@ -16,7 +16,7 @@ import org.apache.uima.jcas.tcas.DocumentAnnotation_Type;
 import org.apache.uima.jcas.tcas.Annotation_Type;
 
 /** 
- * Updated by JCasGen Wed Oct 28 11:51:42 CET 2015
+ * Updated by JCasGen Mon Apr 25 14:01:52 CEST 2016
  * @generated */
 public class KeyPhraseAnnotation_Type extends DocumentAnnotation_Type {
   /** @generated 

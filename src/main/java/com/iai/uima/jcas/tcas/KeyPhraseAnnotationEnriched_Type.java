@@ -13,7 +13,7 @@ import org.apache.uima.cas.impl.FeatureImpl;
 import org.apache.uima.cas.Feature;
 
 /** 
- * Updated by JCasGen Wed Oct 28 11:51:42 CET 2015
+ * Updated by JCasGen Mon Apr 25 14:01:52 CEST 2016
  * @generated */
 public class KeyPhraseAnnotationEnriched_Type extends KeyPhraseAnnotation_Type {
   /** @generated 

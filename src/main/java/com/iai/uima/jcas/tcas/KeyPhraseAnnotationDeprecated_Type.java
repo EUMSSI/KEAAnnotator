@@ -13,7 +13,7 @@ import org.apache.uima.cas.impl.FeatureImpl;
 import org.apache.uima.cas.Feature;
 
 /** 
- * Updated by JCasGen Wed Oct 28 11:51:42 CET 2015
+ * Updated by JCasGen Mon Apr 25 14:01:52 CEST 2016
  * @generated */
 public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type {
   /** @generated 
@@ -166,26 +166,26 @@ public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type
   
  
   /** @generated */
-  final Feature casFeat_isContainedInDeprecatedKeyPhrase;
+  final Feature casFeat_containsIncompleteNer;
   /** @generated */
-  final int     casFeatCode_isContainedInDeprecatedKeyPhrase;
+  final int     casFeatCode_containsIncompleteNer;
   /** @generated
    * @param addr low level Feature Structure reference
    * @return the feature value 
    */ 
-  public boolean getIsContainedInDeprecatedKeyPhrase(int addr) {
-        if (featOkTst && casFeat_isContainedInDeprecatedKeyPhrase == null)
-      jcas.throwFeatMissing("isContainedInDeprecatedKeyPhrase", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    return ll_cas.ll_getBooleanValue(addr, casFeatCode_isContainedInDeprecatedKeyPhrase);
+  public boolean getContainsIncompleteNer(int addr) {
+        if (featOkTst && casFeat_containsIncompleteNer == null)
+      jcas.throwFeatMissing("containsIncompleteNer", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    return ll_cas.ll_getBooleanValue(addr, casFeatCode_containsIncompleteNer);
   }
   /** @generated
    * @param addr low level Feature Structure reference
    * @param v value to set 
    */    
-  public void setIsContainedInDeprecatedKeyPhrase(int addr, boolean v) {
-        if (featOkTst && casFeat_isContainedInDeprecatedKeyPhrase == null)
-      jcas.throwFeatMissing("isContainedInDeprecatedKeyPhrase", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
-    ll_cas.ll_setBooleanValue(addr, casFeatCode_isContainedInDeprecatedKeyPhrase, v);}
+  public void setContainsIncompleteNer(int addr, boolean v) {
+        if (featOkTst && casFeat_containsIncompleteNer == null)
+      jcas.throwFeatMissing("containsIncompleteNer", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    ll_cas.ll_setBooleanValue(addr, casFeatCode_containsIncompleteNer, v);}
     
   
 
@@ -221,8 +221,8 @@ public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type
     casFeatCode_isContainedInLongerKeyPhrase  = (null == casFeat_isContainedInLongerKeyPhrase) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_isContainedInLongerKeyPhrase).getCode();
 
  
-    casFeat_isContainedInDeprecatedKeyPhrase = jcas.getRequiredFeatureDE(casType, "isContainedInDeprecatedKeyPhrase", "uima.cas.Boolean", featOkTst);
-    casFeatCode_isContainedInDeprecatedKeyPhrase  = (null == casFeat_isContainedInDeprecatedKeyPhrase) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_isContainedInDeprecatedKeyPhrase).getCode();
+    casFeat_containsIncompleteNer = jcas.getRequiredFeatureDE(casType, "containsIncompleteNer", "uima.cas.Boolean", featOkTst);
+    casFeatCode_containsIncompleteNer  = (null == casFeat_containsIncompleteNer) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_containsIncompleteNer).getCode();
 
   }
 }

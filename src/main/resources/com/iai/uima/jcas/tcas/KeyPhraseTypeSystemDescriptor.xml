@@ -75,7 +75,12 @@
               <description/>
               <rangeTypeName>uima.cas.String</rangeTypeName>
             </featureDescription>
-          </features>
+          <featureDescription>
+          <name>isVerbReplacedWithNoun</name>
+          <description/>
+          <rangeTypeName>uima.cas.Boolean</rangeTypeName>
+        </featureDescription>
+      </features>
 				</typeDescription>
 				<typeDescription>
 					<name>com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated</name>
@@ -108,7 +113,7 @@
               <rangeTypeName>uima.cas.Boolean</rangeTypeName>
             </featureDescription>
           <featureDescription>
-          <name>isContainedInDeprecatedKeyPhrase</name>
+          <name>containsIncompleteNer</name>
           <description/>
           <rangeTypeName>uima.cas.Boolean</rangeTypeName>
         </featureDescription>

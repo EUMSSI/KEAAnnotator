@@ -13,8 +13,8 @@ import org.apache.uima.jcas.tcas.Annotation;
 
 
 /** 
- * Updated by JCasGen Wed Oct 28 11:51:42 CET 2015
- * XML source: D:/merlin/GitHub/KEAAnnotator/src/main/resources/desc/KeyPhraseDescriptor.xml
+ * Updated by JCasGen Mon Apr 25 14:01:52 CEST 2016
+ * XML source: D:/susanne/git/KEAAnnotator/src/main/resources/com/iai/uima/jcas/tcas/KeyPhraseTypeSystemDescriptor.xml
  * @generated */
 public class KeyPhraseAnnotation extends DocumentAnnotation {
   /** @generated
