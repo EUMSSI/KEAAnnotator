@@ -16,7 +16,7 @@ import org.apache.uima.jcas.tcas.DocumentAnnotation_Type;
 import org.apache.uima.jcas.tcas.Annotation_Type;
 
 /** 
- * Updated by JCasGen Mon Apr 25 14:01:52 CEST 2016
+ * Updated by JCasGen Thu Jun 16 11:49:11 CEST 2016
  * @generated */
 public class KeyPhraseAnnotation_Type extends DocumentAnnotation_Type {
   /** @generated 
@@ -141,6 +141,30 @@ public class KeyPhraseAnnotation_Type extends DocumentAnnotation_Type {
     ll_cas.ll_setStringValue(addr, casFeatCode_Stem, v);}
     
   
+ 
+  /** @generated */
+  final Feature casFeat_thesaurusScore;
+  /** @generated */
+  final int     casFeatCode_thesaurusScore;
+  /** @generated
+   * @param addr low level Feature Structure reference
+   * @return the feature value 
+   */ 
+  public int getThesaurusScore(int addr) {
+        if (featOkTst && casFeat_thesaurusScore == null)
+      jcas.throwFeatMissing("thesaurusScore", "com.iai.uima.jcas.tcas.KeyPhraseAnnotation");
+    return ll_cas.ll_getIntValue(addr, casFeatCode_thesaurusScore);
+  }
+  /** @generated
+   * @param addr low level Feature Structure reference
+   * @param v value to set 
+   */    
+  public void setThesaurusScore(int addr, int v) {
+        if (featOkTst && casFeat_thesaurusScore == null)
+      jcas.throwFeatMissing("thesaurusScore", "com.iai.uima.jcas.tcas.KeyPhraseAnnotation");
+    ll_cas.ll_setIntValue(addr, casFeatCode_thesaurusScore, v);}
+    
+  
 
 
 
@@ -168,6 +192,10 @@ public class KeyPhraseAnnotation_Type extends DocumentAnnotation_Type {
  
     casFeat_Stem = jcas.getRequiredFeatureDE(casType, "Stem", "uima.cas.String", featOkTst);
     casFeatCode_Stem  = (null == casFeat_Stem) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_Stem).getCode();
+
+ 
+    casFeat_thesaurusScore = jcas.getRequiredFeatureDE(casType, "thesaurusScore", "uima.cas.Integer", featOkTst);
+    casFeatCode_thesaurusScore  = (null == casFeat_thesaurusScore) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_thesaurusScore).getCode();
 
   }
 }

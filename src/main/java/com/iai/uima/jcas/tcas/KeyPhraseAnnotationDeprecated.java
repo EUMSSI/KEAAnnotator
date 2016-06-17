@@ -10,7 +10,7 @@ import org.apache.uima.jcas.cas.TOP_Type;
 
 
 /** 
- * Updated by JCasGen Mon Apr 25 14:01:52 CEST 2016
+ * Updated by JCasGen Thu Jun 16 11:49:11 CEST 2016
  * XML source: D:/susanne/git/KEAAnnotator/src/main/resources/com/iai/uima/jcas/tcas/KeyPhraseTypeSystemDescriptor.xml
  * @generated */
 public class KeyPhraseAnnotationDeprecated extends KeyPhraseAnnotation {
@@ -205,6 +205,28 @@ public class KeyPhraseAnnotationDeprecated extends KeyPhraseAnnotation {
     if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_containsIncompleteNer == null)
       jcasType.jcas.throwFeatMissing("containsIncompleteNer", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
     jcasType.ll_cas.ll_setBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_containsIncompleteNer, v);}    
+   
+    
+  //*--------------*
+  //* Feature: equalsNer
+
+  /** getter for equalsNer - gets 
+   * @generated
+   * @return value of the feature 
+   */
+  public boolean getEqualsNer() {
+    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_equalsNer == null)
+      jcasType.jcas.throwFeatMissing("equalsNer", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    return jcasType.ll_cas.ll_getBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_equalsNer);}
+    
+  /** setter for equalsNer - sets  
+   * @generated
+   * @param v value to set into the feature 
+   */
+  public void setEqualsNer(boolean v) {
+    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_equalsNer == null)
+      jcasType.jcas.throwFeatMissing("equalsNer", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    jcasType.ll_cas.ll_setBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_equalsNer, v);}    
   }
 
     

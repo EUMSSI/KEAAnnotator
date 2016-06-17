@@ -13,7 +13,7 @@ import org.apache.uima.cas.impl.FeatureImpl;
 import org.apache.uima.cas.Feature;
 
 /** 
- * Updated by JCasGen Mon Apr 25 14:01:52 CEST 2016
+ * Updated by JCasGen Thu Jun 16 11:49:11 CEST 2016
  * @generated */
 public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type {
   /** @generated 
@@ -188,6 +188,30 @@ public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type
     ll_cas.ll_setBooleanValue(addr, casFeatCode_containsIncompleteNer, v);}
     
   
+ 
+  /** @generated */
+  final Feature casFeat_equalsNer;
+  /** @generated */
+  final int     casFeatCode_equalsNer;
+  /** @generated
+   * @param addr low level Feature Structure reference
+   * @return the feature value 
+   */ 
+  public boolean getEqualsNer(int addr) {
+        if (featOkTst && casFeat_equalsNer == null)
+      jcas.throwFeatMissing("equalsNer", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    return ll_cas.ll_getBooleanValue(addr, casFeatCode_equalsNer);
+  }
+  /** @generated
+   * @param addr low level Feature Structure reference
+   * @param v value to set 
+   */    
+  public void setEqualsNer(int addr, boolean v) {
+        if (featOkTst && casFeat_equalsNer == null)
+      jcas.throwFeatMissing("equalsNer", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    ll_cas.ll_setBooleanValue(addr, casFeatCode_equalsNer, v);}
+    
+  
 
 
 
@@ -223,6 +247,10 @@ public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type
  
     casFeat_containsIncompleteNer = jcas.getRequiredFeatureDE(casType, "containsIncompleteNer", "uima.cas.Boolean", featOkTst);
     casFeatCode_containsIncompleteNer  = (null == casFeat_containsIncompleteNer) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_containsIncompleteNer).getCode();
+
+ 
+    casFeat_equalsNer = jcas.getRequiredFeatureDE(casType, "equalsNer", "uima.cas.Boolean", featOkTst);
+    casFeatCode_equalsNer  = (null == casFeat_equalsNer) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_equalsNer).getCode();
 
   }
 }
