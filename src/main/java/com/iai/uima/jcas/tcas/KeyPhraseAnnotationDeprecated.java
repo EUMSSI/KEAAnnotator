@@ -10,7 +10,7 @@ import org.apache.uima.jcas.cas.TOP_Type;
 
 
 /** 
- * Updated by JCasGen Thu Jun 16 11:49:11 CEST 2016
+ * Updated by JCasGen Tue Jun 21 15:32:07 CEST 2016
  * XML source: D:/susanne/git/KEAAnnotator/src/main/resources/com/iai/uima/jcas/tcas/KeyPhraseTypeSystemDescriptor.xml
  * @generated */
 public class KeyPhraseAnnotationDeprecated extends KeyPhraseAnnotation {

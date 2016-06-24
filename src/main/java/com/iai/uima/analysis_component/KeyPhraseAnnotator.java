@@ -43,6 +43,7 @@ import com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated;
 import com.iai.uima.jcas.tcas.KeyPhraseAnnotationEnriched;
 import com.iai.uima.jcas.tcas.KeyPhraseAnnotationReplaced;
 //import com.iai.uima.jcas.tcas.SentenceAnnotation;
+import com.iai.uima.jcas.tcas.SentenceAnnotation;
 
 import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.ADJ;
 import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.ADV;
@@ -52,16 +53,22 @@ import de.tudarmstadt.ukp.dkpro.core.api.ner.type.Location;
 import de.tudarmstadt.ukp.dkpro.core.api.ner.type.NamedEntity;
 import de.tudarmstadt.ukp.dkpro.core.api.ner.type.Organization;
 import de.tudarmstadt.ukp.dkpro.core.api.ner.type.Person;
-
+import de.tudarmstadt.ukp.dkpro.core.api.segmentation.type.Token;
 import de.tudarmstadt.ukp.dkpro.core.api.syntax.type.chunk.Chunk;
+import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
+import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
+import edu.stanford.nlp.pipeline.Annotation;
+import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 //import edu.stanford.nlp.ling.CoreLabel;
 //import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 //import edu.stanford.nlp.util.CoreMap; 
 //import edu.stanford.nlp.pipeline.StanfordCoreNLP;
+import edu.stanford.nlp.util.CoreMap;
 
 public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 
 	KEAKeyphraseExtractor ke = new KEAKeyphraseExtractor();
+	StanfordCoreNLP pipeline;
 
 	public static final String PARAM_LANGUAGE = "language";
 	@ConfigurationParameter(name = PARAM_LANGUAGE, defaultValue = "en")
@@ -79,7 +86,11 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	@ConfigurationParameter(name = PARAM_MAX_NUMBER_OF_KEYPHRASES, defaultValue = "20")
 	private int MAX_NUMBER_OF_KEYPHRASES;
 	
-
+	
+	public static final String PARAM_EXTEND_KEYPHRASE_TO_CHUNK = "extendKeyphraseToChunk";
+	@ConfigurationParameter(name = PARAM_EXTEND_KEYPHRASE_TO_CHUNK, defaultValue = "true")
+	private boolean EXTEND_KEYPHRASE_TO_CHUNK;
+	
 	public static final String PARAM_ADJ_NOUN_LIST = "adjNounList";
 	@ConfigurationParameter(name = PARAM_ADJ_NOUN_LIST,  mandatory=false)//, defaultValue = "/com/iai/uima/kea/data/wordlists/en/ADJ-NOUN-relation.final")
 	private String ADJ_NOUN_LIST;
@@ -152,12 +163,18 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			throws ResourceInitializationException {
 		super.initialize(aContext);
 
+		if (EXTEND_KEYPHRASE_TO_CHUNK){
+		Properties props = new Properties();
+		props.setProperty("annotators", "tokenize,ssplit,pos,lemma"); 
+		pipeline = new StanfordCoreNLP(props);
+		}
+		
 		BufferedReader read_adj_noun;
 		BufferedReader read_verb_noun;
 		BufferedReader read_city_country;
 		BufferedReader read_country_region;
 		BufferedReader read_abbrev_long;
-		BufferedReader read_keyphrase_list;
+		
 		
 		if (MODEL_LOCATION == null)
 			MODEL_LOCATION = "/com/iai/uima/kea/data/models/" + LANGUAGE + "/model";
@@ -251,26 +268,6 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			
 			thesaurus_list = new Hashtable<String, Integer>();
 
-//			while ((line = read_keyphrase_list.readLine()) != null) {
-//				String[] content = line.split(" ");
-//				
-//				
-//				if (content.length >= 2){
-//					String lastWord = content[content.length - 1];
-//					String keyPhrase = line.substring(0, line.length() - lastWord.length()-1);
-//					int score = 0;
-//					String firstNumber = lastWord.replaceFirst(".*?(\\d*).*", "$1");
-//					if (!firstNumber.equals("")){
-//							score = Integer.parseInt(lastWord);
-//							score = 1; //experiment
-//					if (score > 0)
-//				    thesaurus_list.put(keyPhrase, score);
-////					System.out.println("IN: " + line);
-////					System.out.println("OUT: " + keyPhrase + "SCORE:"+ lastWord+"END");
-//					}
-//				}
-//			}
-//			read_keyphrase_list.close();
 			
 
 		} catch (IOException e1) {
@@ -345,10 +342,10 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		ArrayList<KeyPhrase> keyPhrases = ke.extractKeyphrasesToList(aJCas
 				.getDocumentText());
 
-//		String text = aJCas.getDocumentText();
+		String text = aJCas.getDocumentText();
 
 		// create an empty Annotation just with the given text
-//		Annotation document = new Annotation(text); //Stanford corenlp class
+		Annotation document = new Annotation(text); //Stanford corenlp class
 		
 
         //sorted by length, longest first
@@ -366,6 +363,9 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		 HashSet<String> verbTag = new HashSet<String>(); 
 		 HashSet<String> adjTag = new HashSet<String>();
 		 HashSet<String> stopWordExceptionSet = new HashSet<String>();
+		 HashSet<String> standaloneStopWordSet = new HashSet<String>();
+		 HashSet<String> skipAsInitialPosTag = new HashSet<String>();
+		 HashSet<String> skipAsFinalPosTag = new HashSet<String>();
 		 
 		 boolean postNominalAdjFilter;
 		 boolean advFilter;
@@ -377,22 +377,26 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		 boolean replaceKeyphrases;
 		 boolean enrichKeyphrases;
 		 boolean stopWordException;
-		 boolean preferLongKeyphrases;
+		 boolean standaloneStopwordFilter;
+		 boolean rerankBasedLongKeyphrases;
+		 boolean chunkBasedLongKeyphrases;
 		 boolean thesaurusFilter;
 		 
 		 postNominalAdjFilter = true;
 		 stopwordFilter = true;
-		 stopWordException = true;
+		 stopWordException = false;
+		 standaloneStopwordFilter = true;
 		 advFilter = true;
 		 finiteVerbFilter = true;
 		 replaceKeyphrases = true;
 		 enrichKeyphrases = true;
 		 incompleteNerFilter = true;
 		 kpEqualsNerFilter = true;
-		 containedInLargerHigherRankedKeyphraseFilter = true;
+		 containedInLargerHigherRankedKeyphraseFilter = false;
 		 
-		 preferLongKeyphrases = true;
-		 thesaurusFilter = true;
+		 rerankBasedLongKeyphrases = false;
+//		 thesaurusFilter = false;
+		 chunkBasedLongKeyphrases = true;
 		 
 		 boolean printZw = false; //SP Zwischenausgabe
 		 
@@ -413,6 +417,45 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			 stopWordExceptionSet.add("in");
 			 stopWordExceptionSet.add("for");
 			 
+			 skipAsInitialPosTag.add("DT");
+			 skipAsInitialPosTag.add("PRP");
+			 skipAsInitialPosTag.add("PRP$");
+			 skipAsInitialPosTag.add(",");
+			 skipAsInitialPosTag.add("RBS");
+			 skipAsInitialPosTag.add("POS");
+			 skipAsInitialPosTag.add("WDT");
+			 skipAsInitialPosTag.add("TO");
+			 skipAsInitialPosTag.add("CC");
+			 
+			 skipAsFinalPosTag.add("DT");
+			 skipAsFinalPosTag.add("PRP");
+			 skipAsFinalPosTag.add("PRP$");
+			 skipAsFinalPosTag.add(",");
+			 skipAsFinalPosTag.add("RBS");
+			 skipAsFinalPosTag.add("POS");
+			 skipAsFinalPosTag.add("WDT");
+			 skipAsFinalPosTag.add("TO");
+			 skipAsFinalPosTag.add("CC");
+			 
+			 standaloneStopWordSet.add("country");
+			 standaloneStopWordSet.add("countries");
+			 standaloneStopWordSet.add("home");
+			 standaloneStopWordSet.add("world");
+			 standaloneStopWordSet.add("land");
+			 standaloneStopWordSet.add("case");
+			 standaloneStopWordSet.add("cases");
+			 standaloneStopWordSet.add("assumption");
+			 standaloneStopWordSet.add("method");
+			 standaloneStopWordSet.add("methods");
+			 standaloneStopWordSet.add("device");
+			 standaloneStopWordSet.add("devices");
+			 standaloneStopWordSet.add("nation");
+			 standaloneStopWordSet.add("nations");
+			 standaloneStopWordSet.add("number");
+			 standaloneStopWordSet.add("numbers");
+			 standaloneStopWordSet.add("time");
+			 
+			 
 			 
 		 }
 		 else if (LANGUAGE == "de"){
@@ -432,41 +475,32 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		 }
 		
 
-		 //XXXXX
-		 String text = aJCas.getDocumentText();
-//			Annotation document = new Annotation(text);
-//			// run all Annotators on this text
-//		 	Properties props = new Properties();
-//			props.setProperty("annotators", "tokenize,ssplit,pos,lemma"); //quote and dcoref
-//			pipeline = new StanfordCoreNLP(props);
+		
+		 if (EXTEND_KEYPHRASE_TO_CHUNK){
+			pipeline.annotate(document); 
+		 
+			
+			List<CoreMap> sentences = document.get(SentencesAnnotation.class);
+			
+		 
+				
+			for (CoreMap sentence : sentences) {
+//				if (sentence.get(TokensAnnotation.class).size() > 5) { 
+					SentenceAnnotation sentenceAnn = new SentenceAnnotation(aJCas);
+			
+				int beginSentence = sentence.get(TokensAnnotation.class).get(0)
+						.beginPosition();
+//				System.out.println("SENTENCE" + sentence.toString());
+				int endSentence = sentence.get(TokensAnnotation.class)
+						.get(sentence.get(TokensAnnotation.class).size() - 1)
+						.endPosition();
+				sentenceAnn.setBegin(beginSentence);
+				sentenceAnn.setEnd(endSentence);
+				sentenceAnn.addToIndexes();
+			}
+		 }
 
-//			pipeline.annotate(document); 
-//			
-//			List<CoreMap> sentences = document.get(SentencesAnnotation.class);
-//			
-//			for (CoreMap sentence : sentences) {
-//				SentenceAnnotation sentenceAnn = new SentenceAnnotation(aJCas);
-//				
-//				int beginSentence = sentence.get(TokensAnnotation.class).get(0)
-//						.beginPosition();
-//				int endSentence = sentence.get(TokensAnnotation.class)
-//						.get(sentence.get(TokensAnnotation.class).size() - 1)
-//						.endPosition();
-//				sentenceAnn.setBegin(beginSentence);
-//				sentenceAnn.setEnd(endSentence);
-//				sentenceAnn.addToIndexes();
-//				 for (CoreLabel token: sentence.get(TokensAnnotation.class){
-//					 int beginTok = token.beginPosition();
-//				     int endTok = token.endPosition();
-//				 }
-//			}
-//				
-//			for (SentenceAnnotation sentenceFollowsQuote: sentencesFollowQuote){
-//				   List<Chunk> chunks = JCasUtil.selectCovered(aJCas,
-//				Chunk.class, sentenceFollowsQuote);
-//			}
-//		 List<Chunk> chunks = JCasUtil.selectCovering(aJCas, Chunk.class, someToken); 
-//			 Collection<CHUNK> chunks = select(aJCas, Chunk.class);
+			
 		    Collection<N> nouns = select(aJCas, N.class);
 			Collection<ADJ> adjs = select(aJCas, ADJ.class);
 			Collection<V> verbs = select(aJCas, V.class);
@@ -488,7 +522,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			
 			//SP unclear whether the following is needed..
 			//delete adj, verb, adv candidates that can also be nouns
-//			for (N noun : select(aJCas, N.class)) {
+//			for (N noun : select(aJCas, N.class)) { 
 			for (N noun : nouns) {
 				//exclude NNPs like Todd in Christine Todd Whitman as kp
 //				if (noun.getPosValue().toString().equals("NNP")){
@@ -517,13 +551,18 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			HashSet<Organization> namedOrganizationsList = new HashSet<Organization>(namedOrganizations);
 			HashSet<NamedEntity>namedEntitiesList = new HashSet<NamedEntity>(namedEntities);
 			
+			
 			List<KeyPhraseAnnotation> listKeyPhraseAnnotation = new ArrayList<KeyPhraseAnnotation>();
 			
-//			HashMap<String, Integer> kpRank = new HashMap<String, Integer>();
+			HashMap<String, Integer> kpChunkBasedRank = new HashMap<String, Integer>();
+			HashSet<String> kpChunkBasedBeginEnd = new HashSet<String>();
+			String kpBeginEndNew = null;
 			HashMap<String, Integer> kpReRank = new HashMap<String, Integer>();
 			//environment - environmental
 			HashMap<String, Integer> kpReplaceReRank = new HashMap<String, Integer>();
 //			HashSet<String> kpReplaceDeprecated = new HashSet<String>();
+			HashMap<String,String> upCapTolowCap = new HashMap<String,String>();
+			HashMap<String,Integer> keyPhraseToRank = new HashMap<String,Integer>();
 			
 //			Collection<KeyPhraseAnnotation> addedKeyPhrases = select(aJCas, KeyPhraseAnnotation.class);
 //			Collection<KeyPhraseAnnotation> allKeyPhrases = select(aJCas, KeyPhraseAnnotation.class);
@@ -531,8 +570,39 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		for (KeyPhrase kp : keyPhrases) {
 //			kpRank.put(kp.getUnstemmed().toLowerCase(), kp.getRank());
 //			System.out.println("KP1 " + kp.getUnstemmed().toLowerCase());
+			
+			
+			String patternLowerCaseString = null;
+			Pattern patternLowerCase;
+			//Restriction to NON-NER does not help because match.find and matchLoserCase.find()
+			//apply in or-statement
+//			String kpLowerCase = null;
+//			if (!kp.getUnstemmed().toLowerCase().equals(kp.getUnstemmed()) && 
+//					!namedEntitiesList.isEmpty()){
+//				kpLowerCase = kp.getUnstemmed().toLowerCase();
+//				
+//				
+//			NER:	for (NamedEntity ner : namedEntitiesList){
+//					if (ner.getCoveredText().equals(kp.getUnstemmed())){
+//						kpLowerCase = null;
+//						break NER;
+//					}
+//				}
+//				if (kpLowerCase != null){
+//					System.out.println("UPPER CASE NO NER " + kp.getUnstemmed());
+//					patternLowerCaseString = String.format("(\\b)(%s)(\\b)", kp.getUnstemmed().toLowerCase());
+//					patternLowerCase = Pattern.compile(patternLowerCaseString);
+//					
+//				}
+//			}
+			
+			// Fracking -> fracking
+			patternLowerCaseString = String.format("(\\b)(%s)(\\b)", kp.getUnstemmed().toLowerCase());
+			patternLowerCase = Pattern.compile(patternLowerCaseString);
+			
 			String patternString = String.format("(\\b)(%s)(\\b)", kp.getUnstemmed());
 			Pattern pattern = Pattern.compile(patternString);
+			
 			
 			
 			boolean containsStopword = false;
@@ -572,28 +642,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 
 			String[] kpSplit = kp.getUnstemmed().split(" ");
 			
-			if (thesaurusFilter){
-//				System.out.println("KP:"+kp.getUnstemmed().toLowerCase());
-				if (thesaurus_list.containsKey(kp.getUnstemmed().toLowerCase())){
-					thesaurusScore = thesaurusScore + 
-							thesaurus_list.get(kp.getUnstemmed().toLowerCase());
-				}
-				if (kpSplit.length>1){
-					for (String word: kpSplit){
-						if (thesaurus_list.containsKey(word.toLowerCase())){
-							thesaurusScore = (thesaurusScore + 
-									thesaurus_list.get(word.toLowerCase())) ;
-							
-						}
-					}
-					thesaurusScore = thesaurusScore / kpSplit.length;
-				}
-			 
-//				System.out.println("SCORE:" + kp.getUnstemmed().toLowerCase()+"L:" + kpSplit.length+ "/"+ thesaurusScore);
-			}
-			
-			
-			
+	
 			if (stopwordFilter){
 			for (String sw : kpSplit) {
 				if (ke.getStopwords().isStopword(sw)){
@@ -1073,7 +1122,7 @@ LONGABB:		for (Entry<String, String> entry : abbrev_long.entrySet()){
 			
 
 //			//"European immigrant crisis" rank=14, "immigrant" rank=0
-			if (preferLongKeyphrases && !deprecatedKeyPhrases.contains(kp.getUnstemmed().toLowerCase())){
+			if (rerankBasedLongKeyphrases && !deprecatedKeyPhrases.contains(kp.getUnstemmed().toLowerCase())){
 //				System.out.println("KPpreferLonger " + kp.getUnstemmed().toLowerCase());
 OTHERFORLARGERLOWERRANKED: for (KeyPhrase other2 : keyPhrasesByRank) {
 //					System.out.println("KPCompare " + kp.getUnstemmed().toLowerCase() + 
@@ -1103,15 +1152,97 @@ OTHERFORLARGERLOWERRANKED: for (KeyPhrase other2 : keyPhrasesByRank) {
 						}
 					}
 				}
-				
-				
-				
-			}
+			} //rerankBasedLongKeyphrases
 			
 
 			KeyPhraseAnnotation annotation;
 			Matcher matcher = pattern.matcher(
 					aJCas.getDocumentText());
+			
+			//For Fracking - fracking
+			Matcher matcherLowerCase = patternLowerCase.matcher(
+					aJCas.getDocumentText());
+			
+MATCHLOWCASE:		while (matcherLowerCase.find()) {
+				
+				
+				if (isKeyPhraseDeprecated) {
+//					System.out.println("DEPRECATED " + kp.getUnstemmed());
+					annotation = new KeyPhraseAnnotationDeprecated(aJCas);
+					((KeyPhraseAnnotationDeprecated) annotation)
+					.setContainsStopword(containsStopword);
+					((KeyPhraseAnnotationDeprecated) annotation)
+					.setEndsWithAdjective(isDeprecatedEndsWithAdjective);
+					((KeyPhraseAnnotationDeprecated) annotation)
+					.setContainsFiniteVerb(isDeprecatedEndsWithFiniteVerb);
+					((KeyPhraseAnnotationDeprecated) annotation)
+					.setContainsAdverb(isDeprecatedContainsAdverb);
+					((KeyPhraseAnnotationDeprecated) annotation)
+					.setIsContainedInLongerKeyPhrase(isContainedInLargerKeyprase);
+//					((KeyPhraseAnnotationDeprecated) annotation)
+//					.setIsContainedInDeprecatedKeyPhrase(isContainedInDeprecatedKeyPhrase);
+					((KeyPhraseAnnotationDeprecated) annotation)
+					.setContainsIncompleteNer(isDeprecatedContainsIncompleteNer);
+					((KeyPhraseAnnotationDeprecated) annotation)
+					.setEqualsNer(isDeprecatedEqualsNer);
+				} else if (isKeyPhraseReplaced) {
+//					System.out.println("REPLACED " + kp.getUnstemmed());
+					annotation = new KeyPhraseAnnotationReplaced(aJCas);
+					((KeyPhraseAnnotationReplaced) annotation)
+				    .setIsAdjectiveReplacedWithNoun(isAdjectiveReplacedWithNoun); //SPnew
+				((KeyPhraseAnnotationReplaced) annotation)  
+				    .setIsVerbReplacedWithNoun(isVerbReplacedWithNoun);
+				((KeyPhraseAnnotationReplaced) annotation)
+					.setReplacee(keyPhraseReplacee);
+				} else if (isKeyPhraseEnriched) {
+//					System.out.println("ENRICHED " + kp.getUnstemmed());
+					annotation = new KeyPhraseAnnotationEnriched(aJCas);
+					((KeyPhraseAnnotationEnriched) annotation)
+					.setEnrichedWithAbbreviation(isEnrichedWithAbbreviation);
+					((KeyPhraseAnnotationEnriched) annotation)
+					.setEnrichedWithCountry(isEnrichedWithCountry);
+					((KeyPhraseAnnotationEnriched) annotation)
+					.setEnrichedWithLongForm(isEnrichedWithLongForm);
+					((KeyPhraseAnnotationEnriched) annotation)
+					.setEnrichedWithRegion(isEnrichedWithRegion);
+					((KeyPhraseAnnotationEnriched) annotation)
+					.setEnrichment(keyPhraseReplacee);
+					
+				} else {
+//					System.out.println("NORMAL " + kp.getUnstemmed());
+					annotation = new KeyPhraseAnnotation(aJCas);
+				}
+
+
+				if (!matcherLowerCase.group(2).equals(kp.getUnstemmed())){
+					annotation.setKeyPhrase(matcherLowerCase.group(2));
+					upCapTolowCap.put(kp.getUnstemmed(),matcherLowerCase.group(2));
+//					System.out.println("UP TO LOW" + kp.getUnstemmed() + "->" + matcherLowerCase.group(2) );
+				}
+				else {
+				annotation.setKeyPhrase(kp.getUnstemmed());
+//				System.out.println("ORIGINAL" + kp.getUnstemmed());
+				}
+				annotation.setProbability(kp.getProbability());
+				annotation.setStem(kp.getStemmed());
+				//hits if replacee follows replaced (i.e. is shorter
+				
+				annotation.setRank(kp.getRank()); //later revised
+				
+					annotation.setBegin(matcherLowerCase.start(2)); 
+					annotation.setEnd(matcherLowerCase.end(2));
+//					System.out.println("LowerCase " + annotation.getKeyPhrase() + "RANK" + annotation.getRank() + " " + matcherLowerCase.start(2) + "-" + matcherLowerCase.end(2));
+				
+
+				
+				annotation.setLanguage(LANGUAGE);
+				listKeyPhraseAnnotation.add(annotation);
+//				annotation.addToIndexes(); //later
+				
+			}//end matcherLowerCase.find()
+//			
+			
+			
 			
 			while (matcher.find()) {
 
@@ -1162,143 +1293,403 @@ OTHERFORLARGERLOWERRANKED: for (KeyPhrase other2 : keyPhrasesByRank) {
 					annotation = new KeyPhraseAnnotation(aJCas);
 				}
 
+				
+				if (upCapTolowCap.containsKey(kp.getUnstemmed())){
+					annotation.setKeyPhrase(upCapTolowCap.get(kp.getUnstemmed()));
+//					System.out.println("UP TO LOW matcher" + kp.getUnstemmed() + "->" + upCapTolowCap.get(kp.getUnstemmed()));
+				}
+				else {
+//				System.out.println("ORIGINAL matcher" + matcher.group(2));
 				annotation.setKeyPhrase(kp.getUnstemmed());
+				}
+//				System.out.println("LOWER CASE ONLY" + kp.getUnstemmed());
+//				}
+				
+//				annotation.setKeyPhrase(kp.getUnstemmed());
 				annotation.setProbability(kp.getProbability());
 				annotation.setStem(kp.getStemmed());
 				//hits if replacee follows replaced (i.e. is shorter
 				
-				annotation.setRank(kp.getRank()); //later
+				annotation.setRank(kp.getRank()); //later revised
 				
-//				annotation.setBegin(matcher.start()); //ORI
-//				annotation.setEnd(matcher.end());     //ORI
 				annotation.setBegin(matcher.start(2));  //SPnew
-				annotation.setEnd(matcher.end(2));      //SPnew
-				
+				annotation.setEnd(matcher.end(2)); 
+//				System.out.println("matcher " + annotation.getKeyPhrase() + "RANK" + annotation.getRank() + " "  + matcher.start(2) + "-" + matcher.end(2));
+
 				
 				annotation.setLanguage(LANGUAGE);
-				annotation.setThesaurusScore(thesaurusScore);
 				listKeyPhraseAnnotation.add(annotation);
 //				annotation.addToIndexes(); //later
 				
-			}
+			}//end Matcher.find
+			
+			
+			
+			
+			
+			
+			
+			
+			
 		} //for kp
 		
 
 		
 		
 		
-		for (int i = 0; i < listKeyPhraseAnnotation.size(); i++) {
-	        	KeyPhraseAnnotation keyPhraseAnnotation = listKeyPhraseAnnotation.get(i);
-	        	if (kpReRank.containsKey(keyPhraseAnnotation.getCoveredText().toLowerCase())){
-	        		
-//	        		System.out.println("RERANKED ANNO " + 
-//	        		keyPhraseAnnotation.getCoveredText().toLowerCase() 
-//	        				+ " " + keyPhraseAnnotation.getRank() + ":" 
-//	        				+ kpReRank.get(keyPhraseAnnotation.getCoveredText().toLowerCase()));
-	        		keyPhraseAnnotation.setRank(kpReRank.get(keyPhraseAnnotation.getCoveredText().toLowerCase()));
-//	        		System.out.println ("FINAL RANK " + keyPhraseAnnotation.getRank());
-	        	}
-	        	
-	        	if (kpReplaceReRank.containsKey(keyPhraseAnnotation.getCoveredText())){
-	        		keyPhraseAnnotation.setRank(kpReplaceReRank.get(keyPhraseAnnotation.getCoveredText()));
-//					System.out.println("REPRERANK ANNO" + keyPhraseAnnotation.getCoveredText()
-//					+ " " + keyPhraseAnnotation.getRank() + ":" 
-//    				+ kpReplaceReRank.get(keyPhraseAnnotation.getCoveredText().toLowerCase())
-//							);
-				}
-				
-	        	
-//	        	keyPhraseAnnotation.getRank();
-//	        	keyPhraseAnnotation.addToIndexes();
-			
-		}
+//		for (int i = 0; i < listKeyPhraseAnnotation.size(); i++) {
+//	        	KeyPhraseAnnotation keyPhraseAnnotation = listKeyPhraseAnnotation.get(i);
+//	        	if (kpReRank.containsKey(keyPhraseAnnotation.getCoveredText().toLowerCase())){
+//	        		
+////	        		System.out.println("RERANKED ANNO " + 
+////	        		keyPhraseAnnotation.getCoveredText().toLowerCase() 
+////	        				+ " " + keyPhraseAnnotation.getRank() + ":" 
+////	        				+ kpReRank.get(keyPhraseAnnotation.getCoveredText().toLowerCase()));
+//	        		keyPhraseAnnotation.setRank(kpReRank.get(keyPhraseAnnotation.getCoveredText().toLowerCase()));
+////	        		System.out.println ("FINAL RANK " + keyPhraseAnnotation.getRank());
+//	        	}
+//	        	
+//	        	if (kpReplaceReRank.containsKey(keyPhraseAnnotation.getCoveredText())){
+//	        		keyPhraseAnnotation.setRank(kpReplaceReRank.get(keyPhraseAnnotation.getCoveredText()));
+////					System.out.println("REPRERANK ANNO" + keyPhraseAnnotation.getCoveredText()
+////					+ " " + keyPhraseAnnotation.getRank() + ":" 
+////    				+ kpReplaceReRank.get(keyPhraseAnnotation.getCoveredText().toLowerCase())
+////							);
+//				}
+//				
+//	        	
+////	        	keyPhraseAnnotation.getRank();
+////	        	keyPhraseAnnotation.addToIndexes();
+//			
+//		}
 		
 //		ArrayList<KeyPhrase> keyPhrasesByRank = new ArrayList<KeyPhrase> (keyPhrases);
-		boolean byWordCountOnly = false;
+	
 		boolean byRank = false;
-		boolean byThesaurusScore = false;
 		
-//		byWordCountOnly = true;
+
 		byRank = true;
-//		byThesaurusScore = true;
+
 		
-		if (byThesaurusScore){
-//			System.out.println ("sort by thesaurus");
-			Collections.sort(listKeyPhraseAnnotation, new KeyPhraseAnnotationByThesaurusScoreComparator());
-		}
-		else if (byWordCountOnly){
-			Collections.sort(listKeyPhraseAnnotation, new KeyPhraseAnnotationByWordCountComparator());
-//			System.out.println ("sort by word count");
-			}
-		else if (byRank){
+		
+		
+		if (byRank){
 			Collections.sort(listKeyPhraseAnnotation, new KeyPhraseAnnotationByRankLengthComparator());
 //			System.out.println ("sort by rank");
 			}
 		String oldText = "";
 		int oldRank = -1;
-//		int i = -1;
-		for (KeyPhraseAnnotation kpa : listKeyPhraseAnnotation) {
-//			System.out.println("FINAL RANK ");
-//        	 kpa = listKeyPhraseAnnotation.get(i);
-        	if (!kpa.getCoveredText().toLowerCase().equals(oldText)){
-//        		System.out.println("OLDTEXT " + oldText + "!=" + kpa.getCoveredText().toLowerCase()); 
-//        	i++;
-        	oldText = kpa.getCoveredText().toLowerCase();
-        	
-        	}
-        	
-//        	kpa.setRank(i); //SP uncomment UNDO!!!
-        	oldRank = kpa.getRank();
-        	
-        	
-		}
+		int addToRank = 0;
+		int finalRank = -1;
+		int i;
+		i = -1;
+//		for (KeyPhraseAnnotation kpa : listKeyPhraseAnnotation) {
+////			System.out.println("FINAL RANK ");
+////        	 kpa = listKeyPhraseAnnotation.get(i);
+//        	if (!kpa.getCoveredText().toLowerCase().equals(oldText)){
+////        		System.out.println("OLDTEXT " + oldText + "!=" + kpa.getCoveredText().toLowerCase()); 
+////        	i++;
+//        	oldText = kpa.getCoveredText().toLowerCase();
+//        	
+//        	}
+//        	
+////        	kpa.setRank(i); //SP uncomment 
+////        	oldRank = kpa.getRank();
+//        	
+//        	
+//		}
 //		MAX_NUMBER_OF_KEYPHRASES = 10; //SP global parameter
 		int keyphraseCount =0;
 		HashSet <String> kpText = new HashSet<>();
 		KPA: for (KeyPhraseAnnotation kpa : listKeyPhraseAnnotation) {
 //			System.out.println("KPA TYPE " + kpa.getType().getShortName());
-			if (keyphraseCount < MAX_NUMBER_OF_KEYPHRASES && 
+			if (
 					(kpa.getType().getShortName().equals("KeyPhraseAnnotation") 
 						||	kpa.getType().getShortName().equals("KeyPhraseAnnotationReplaced") 
 						||	kpa.getType().getShortName().equals("KeyPhraseAnnotationEnriched") 
 							)){
+				String [] kpaParts = kpa.getCoveredText().split(" ");
+				
 //				MAX KEY pay federal income taxes:1 2 2
 //				MAX KEY federal income taxes:1 2 3
 //				MAX KEY income taxes:1 2 4
 //				MAX KEY taxes:1 2 5
-				String [] kpaParts = kpa.getCoveredText().split(" ");
+				
 //				if (kpaParts.length>1){
-				 for (String previousKp : kpText) {
-//						System.out.println("KPCompare " + kp.getUnstemmed().toLowerCase() + 
-//								":" + kp.getRank() +
-//								"::" + other2.getUnstemmed().toLowerCase()+ 
-//								":" + other2.getRank());
-					String patternKpaString = String.format("(\\b)(%s)(\\b)", kpa.getCoveredText().toLowerCase());
-					Pattern patternKpa = Pattern.compile(patternKpaString);
-					Matcher matcherKpa = patternKpa.matcher(
-							previousKp);
-//					matcherOther.find()
-//						if (kp.getUnstemmed().toLowerCase().contains(other2.getUnstemmed().toLowerCase()) 
-						if (	matcherKpa.find() 
-								&&	!previousKp.equalsIgnoreCase(kpa.getCoveredText().toLowerCase())){
+//				 for (String previousKp : kpText) {
+////						System.out.println("KPCompare " + kp.getUnstemmed().toLowerCase() + 
+////								":" + kp.getRank() +
+////								"::" + other2.getUnstemmed().toLowerCase()+ 
+////								":" + other2.getRank());
+//					String patternKpaString = String.format("(\\b)(%s)(\\b)", kpa.getCoveredText().toLowerCase());
+//					Pattern patternKpa = Pattern.compile(patternKpaString);
+//					Matcher matcherKpa = patternKpa.matcher(
+//							previousKp);
+////					matcherOther.find()
+////						if (kp.getUnstemmed().toLowerCase().contains(other2.getUnstemmed().toLowerCase()) 
+//						if (	matcherKpa.find() 
+//								&&	!previousKp.equalsIgnoreCase(kpa.getCoveredText().toLowerCase())){
 //							System.out.println("SUBSTRING" + kpa.getCoveredText().toLowerCase());
-							continue KPA;
-						}
-				 }
+//							continue KPA;
+//						}
+//				 }
 //				}
 								
 				
-					kpa.addToIndexes();
-					if (!kpText.contains(kpa.getCoveredText().toLowerCase())){
-					kpText.add(kpa.getCoveredText().toLowerCase());
-					keyphraseCount++;
-					//OUT
-//					System.out.println("MAX KEY " + kpa.getCoveredText().toLowerCase() 
-//	            			+ ":"+ kpa.getThesaurusScore() +" " + kpa.getRank() + " " + keyphraseCount);
-					}
-//					System.out.println("MAX KEY " + kpa.getCoveredText().toLowerCase() 
-//	            			+ ":"+ kpa.getThesaurusScore() +" " + kpa.getRank() + " " + keyphraseCount);
-			}
+				
+				
+				 	kpa.addToIndexes();
+				 	int kpBeginNew  = kpa.getBegin();
+					int kpEndNew = kpa.getEnd();
+					int kpRankNew = kpa.getRank();
+					
+					
+					kpBeginEndNew = "" + kpBeginNew + "-" + kpEndNew;
+					String kpKeyPhraseNew = kpa.getKeyPhrase();
+					//case-normalised kp fracking rank:2 and normal kp fracking rank:4 
+					//does not occur because stem determines kp
+//					if (keyPhraseToRank.containsKey(kpKeyPhraseNew)){
+//						kpRankNew = keyPhraseToRank.get(kpKeyPhraseNew);
+//					}
+//					else {
+//					keyPhraseToRank.put(kpKeyPhraseNew, kpRankNew);
+//					}
+
+//					System.out.println("KP" + kpKeyPhraseNew + 
+//							"RANK " + kpRankNew);
+//					System.out.println("OFFSETS " + kpa.getBegin() + "-" + kpa.getEnd());
+					
+					
+					if (EXTEND_KEYPHRASE_TO_CHUNK){	
+						kpBeginNew = -1;
+						kpEndNew = -1;
+						kpKeyPhraseNew = "";
+						
+//						System.out.println("KP " + kpa.getCoveredText());
+						List <Chunk> chunks = JCasUtil.selectCovering(aJCas,
+								Chunk.class, kpa);
+						
+						if (chunks.size()==0){
+							//Unattended garbage piled
+//						System.out.println("IGNORE CONTAINS CHUNK BORDER OR NO CHUNK " + kpa.getCoveredText());
+						kpa.removeFromIndexes();
+						continue KPA;
+						}
+						
+						for (Chunk aChunk : chunks) {
+							
+							for (Person person : namedPersonsList){
+								if (aChunk.getChunkValue()!=null && aChunk.getCoveredText().contains(person.getCoveredText())){
+//									System.out.println("IGNORE PER " + kpa.getCoveredText() + ":" + aChunk.getCoveredText());
+									kpa.removeFromIndexes();
+									continue KPA;
+								}
+							}
+							
+							
+//							System.out.println("KP " + kpa.getCoveredText());
+//							System.out.println("CHUNK " + aChunk.getCoveredText() + " " + 
+//							aChunk.getChunkValue().toString());
+							if (aChunk.getChunkValue()!=null
+							&& aChunk.getChunkValue().toString().equals("VP")){
+							 if (kpaParts != null && kpaParts.length==1){
+								//TO DO: get subsequent PP NP
+								//travelling across the mediterranean sea
+								//concerned about fracking
+								kpBeginNew = kpa.getBegin();
+								kpEndNew = kpa.getEnd();
+								kpKeyPhraseNew = kpa.getCoveredText();
+								//currently deleted
+								kpa.removeFromIndexes();
+								continue KPA;
+							 }
+							 else {
+								 System.out.println("IGNORED VP " + kpa.getCoveredText());
+								 kpa.removeFromIndexes();
+									continue KPA;
+							 }
+							}
+							else if (aChunk.getChunkValue()!=null
+							&& aChunk.getChunkValue().toString().equals("NP")){
+							kpKeyPhraseNew = aChunk.getCoveredText();
+//							kpBeginNew = -1;
+//							kpEndNew = -1;
+//							kpRankNew = kpa.getRank();
+							List<Token> tokens= JCasUtil.selectCovered(aJCas,
+									Token.class, aChunk);
+							
+				TOK:			for (Token aToken : tokens){
+									while (kpKeyPhraseNew.startsWith(" ")){
+										kpKeyPhraseNew = kpKeyPhraseNew.substring(1);
+				//						System.out.println("BLANKWEG" + kpKeyPhraseNew);
+									}
+									if (aToken.getPos().getPosValue().toString() != null
+											&& skipAsInitialPosTag.contains(aToken.getPos().getPosValue().toString())
+											){
+	//								System.out.println("MORPH BEG " + aToken.getPos().getPosValue().toString() 
+	//										+ aToken.getBegin() + "-" + aToken.getEnd());
+									kpKeyPhraseNew = kpKeyPhraseNew.substring(aToken.getEnd() - aToken.getBegin());
+									
+	//								System.out.println("KPSUBCHUNK " + kpKeyPhraseNew);
+									continue TOK;
+									}
+									//delete STOPWORDS at beginning of phrase
+									else if (aToken.getCoveredText() != null
+											&& ke.getStopwords().isStopword(aToken.getCoveredText())
+											){
+//									System.out.println("STOPWORD BEG " + aToken.getCoveredText() + " " + 
+//											+ aToken.getBegin() + "-" + aToken.getEnd());
+									
+									if (aToken.getEnd() - aToken.getBegin() >= 0){
+									kpKeyPhraseNew = kpKeyPhraseNew.substring(aToken.getEnd() - aToken.getBegin());
+									}
+									else {
+//							    		System.out.println("IGNORE STRANGE " + kpKeyPhraseNew);
+							    		kpa.removeFromIndexes();
+										continue KPA;	
+							    	}
+									
+//									System.out.println("KPSUBCHUNK " + kpKeyPhraseNew);
+									continue TOK;
+									}
+									
+									else {
+									kpBeginNew = aToken.getBegin();
+//									System.out.println("FIRST " + aToken.getCoveredText() + " " + aToken.getBegin());
+									break TOK;
+									}
+								}
+							
+							
+							while (kpKeyPhraseNew.startsWith(" ")){
+								kpKeyPhraseNew = kpKeyPhraseNew.substring(1);
+//								System.out.println("BLANKWEG" + kpKeyPhraseNew);
+							}
+							//SPNEW 
+			TOKBACKWARDS:		for (i = tokens.size() - 1; i >= 0; i--) {
+								while (kpKeyPhraseNew.endsWith(" ")){
+									kpKeyPhraseNew = kpKeyPhraseNew.substring(0,kpKeyPhraseNew.length()-1);
+//									System.out.println("FINAL BLANKWEG" + kpKeyPhraseNew);
+								}
+							    if (tokens.get(i).getPos().getPosValue().toString() != null
+										&& skipAsFinalPosTag.contains(tokens.get(i).getPos().getPosValue().toString())
+										){
+//								System.out.println("MORPH END " + tokens.get(i).getCoveredText()  
+//										+ tokens.get(i).getCoveredText().length());
+							    	int tokenlength = tokens.get(i).getCoveredText().length();
+							    	if (kpKeyPhraseNew.length() - tokenlength - 1 > 0){
+								kpKeyPhraseNew = kpKeyPhraseNew.substring(0, kpKeyPhraseNew.length() - tokenlength);
+							    	}
+							    	else {
+//							    		System.out.println("IGNORE STRANGE " + kpKeyPhraseNew);
+							    		kpa.removeFromIndexes();
+										continue KPA;	
+							    	}
+								
+//								System.out.println("KPSUBCHUNK " + kpKeyPhraseNew);
+								continue TOKBACKWARDS;
+								}
+								else {
+								kpEndNew = tokens.get(i).getEnd();
+//								System.out.println("FIRST " + aToken.getCoveredText() + " " + aToken.getBegin());
+								break TOKBACKWARDS;
+								}
+							    
+							 }
+							while (kpKeyPhraseNew.endsWith(" ")){
+								kpKeyPhraseNew = kpKeyPhraseNew.substring(0,kpKeyPhraseNew.length()-1);
+//								System.out.println("FINAL BLANKWEG" + kpKeyPhraseNew);
+							}
+							if (kpEndNew == -1){
+							Token lastToken = tokens.get(tokens.size()-1);
+							kpEndNew = lastToken.getEnd();
+//							System.out.println("LAST " + lastToken.getCoveredText());
+							}
+							
+//							System.out.println("KPNEWCHUNK" + kpKeyPhraseNew + " " + kpRankNew);
+							
+							} //NEW NP
+							else {
+//								System.out.println("IGNORED CHUNK TYPE " + aChunk.getChunkValue().toString() + " " + kpa.getCoveredText());
+								kpa.removeFromIndexes();
+								continue KPA;
+							}
+						} //for chunks
+						
+						
+						String[] kpaSplit = kpKeyPhraseNew.split(" ");
+						
+						if (kpaSplit != null && kpaSplit.length > 1) {
+							if (ke.getStopwords().isStopword(kpaSplit[0])
+									|| ke.getStopwords().isStopword(kpaSplit[kpaSplit.length-1])
+									){
+//								System.out.println("IGNORE STOPWORD " + kpKeyPhraseNew);
+								kpa.removeFromIndexes();
+								continue KPA;
+							}
+						}
+						//Fracking -> fracking
+						if (upCapTolowCap.containsKey(kpKeyPhraseNew)){
+							kpKeyPhraseNew =upCapTolowCap.get(kpKeyPhraseNew);
+//							System.out.println("CORRECT CHUNK LOW CAP" + kpKeyPhraseNew);
+						}
+						
+					} // EXTENDKEYPHRASETOCHUNK
+					
+							if (kpBeginNew != -1 && kpEndNew != -1){
+								kpa.removeFromIndexes();
+								kpBeginEndNew = "" + kpBeginNew + "-" + kpEndNew;
+								if (kpChunkBasedBeginEnd.contains(kpBeginEndNew)){
+//									System.out.println("ANNO DOUBLE " +kpKeyPhraseNew);
+									continue KPA;
+								}
+								
+								if (kpRankNew == oldRank){
+									addToRank = addToRank + 1;
+									}
+									else {
+										oldRank = kpRankNew;
+									}
+								finalRank = kpRankNew+addToRank;
+								if(kpText.contains(kpKeyPhraseNew.toLowerCase())){
+//								System.out.println("BEFORE RERANK EXISTING " + kpKeyPhraseNew + " " + finalRank);
+										if ( !kpChunkBasedRank.isEmpty() && kpChunkBasedRank.containsKey(kpKeyPhraseNew.toLowerCase())
+												&& (kpChunkBasedRank.get(kpKeyPhraseNew.toLowerCase()) < finalRank)
+										){
+//											System.out.println("RERANK EXISTING " + kpKeyPhraseNew + " " + kpRankNew + "::" + kpChunkBasedRank.get(kpKeyPhraseNew.toLowerCase()));
+											finalRank = kpChunkBasedRank.get(kpKeyPhraseNew.toLowerCase());
+									
+										}
+								}
+								else if (standaloneStopwordFilter && standaloneStopWordSet.contains(kpKeyPhraseNew)){
+//									System.out.println("STANDALONE STOPWORD " + kpKeyPhraseNew);
+									continue KPA;
+								}
+								else if (keyphraseCount < MAX_NUMBER_OF_KEYPHRASES){
+									kpText.add(kpKeyPhraseNew.toLowerCase());
+									kpChunkBasedRank.put(kpKeyPhraseNew.toLowerCase(), finalRank);
+									keyphraseCount++;
+								}
+								else if (keyphraseCount >= MAX_NUMBER_OF_KEYPHRASES){
+//									System.out.println("MAX REACHED NEW NOT ADDED " + kpKeyPhraseNew);
+									continue KPA;
+								}
+								
+								
+								
+								kpa.setKeyPhrase(kpKeyPhraseNew);
+								kpa.setBegin(kpBeginNew);
+								kpa.setEnd(kpEndNew);
+								kpa.setRank(finalRank);
+								kpBeginEndNew = "" + kpBeginNew + "-" + kpEndNew;
+								kpChunkBasedBeginEnd.add(kpBeginEndNew);
+								
+//								System.out.println("KPCHUNK" + kpKeyPhraseNew + 
+//										"RANK:COUNT " + finalRank + ":" + keyphraseCount);
+//								System.out.println("OFFSETS " + kpa.getBegin() + "-" + kpa.getEnd());
+								kpa.addToIndexes();
+							}
+			} 
 		}
 		
 		
@@ -1345,77 +1736,6 @@ OTHERFORLARGERLOWERRANKED: for (KeyPhrase other2 : keyPhrasesByRank) {
 
 	}
 	
-	private class KeyPhraseAnnotationByThesaurusScoreOnlyComparator implements Comparator<KeyPhraseAnnotation> {
-
-		@Override
-		public int compare(KeyPhraseAnnotation a, KeyPhraseAnnotation b) {
-			int byThes = b.getThesaurusScore() - a.getThesaurusScore();
-			
-			return byThes != 0 ? byThes : b.getCoveredText().length() - a.getCoveredText().length();
-		}
-
-	}
 	
-	private class KeyPhraseAnnotationByThesaurusScoreComparator implements Comparator<KeyPhraseAnnotation> {
-
-		@Override
-		public int compare(KeyPhraseAnnotation a, KeyPhraseAnnotation b) {
-			int byThes = b.getThesaurusScore() - a.getThesaurusScore();
-			
-			if (byThes != 0){
-				return byThes;
-			}
-			else {
-			 byThes = a.getRank() - b.getRank();
-			}
-			if (byThes != 0){
-				return byThes;
-			}
-			else {
-				return byThes != 0 ? byThes : b.getCoveredText().length() - a.getCoveredText().length();
-//			return byThes != 0 ? byThes :a.getBegin() - b.getBegin();
-			}
-		}
-
-	}
-	
-	private class KeyPhraseAnnotationByWordCountComparator implements Comparator<KeyPhraseAnnotation> {
-
-		@Override
-		public int compare(KeyPhraseAnnotation a, KeyPhraseAnnotation b) {
-			String[] aWordCount = a.getCoveredText().split(" ");
-			String[] bWordCount = b.getCoveredText().split(" ");
-			
-			int byWordCount = bWordCount.length - aWordCount.length;
-			if (byWordCount != 0){
-				return byWordCount;
-			}
-			else {
-			 byWordCount = a.getRank() - b.getRank();
-			}
-			if (byWordCount != 0){
-				return byWordCount;
-			}
-			else {
-			return byWordCount != 0 ? byWordCount :a.getBegin() - b.getBegin();
-			}
-		}
-	}
-	
-	private class KPAByWComparator implements Comparator<KeyPhraseAnnotation> {
-		@Override
-		public int compare(KeyPhraseAnnotation a, KeyPhraseAnnotation b) {
-			String[] aWordCount = a.getCoveredText().split(" ");
-			String[] bWordCount = b.getCoveredText().split(" ");
-			return bWordCount.length - aWordCount.length;
-		}
-	}
-	
-	private class KPAByWLomparator implements Comparator<KeyPhraseAnnotation> {
-		@Override
-		public int compare(KeyPhraseAnnotation a, KeyPhraseAnnotation b) {
-			return b.getCoveredText().length() - a.getCoveredText().length();
-		}
-	}
 	
 }
