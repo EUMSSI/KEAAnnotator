@@ -3,8 +3,13 @@ package com.iai.uima.analysis_component;
 import static org.apache.uima.fit.util.JCasUtil.select;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -13,8 +18,11 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
 import java.util.Map.Entry;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,7 +44,8 @@ import org.apache.uima.fit.util.JCasUtil;
 import org.apache.uima.jcas.JCas;
 //import org.apache.uima.jcas.tcas.Annotation;
 import org.apache.uima.resource.ResourceInitializationException;
-
+import org.dbpedia.spotlight.uima.types.DBpediaResource;
+import org.dbpedia.spotlight.uima.types.TopDBpediaResource;
 
 import com.iai.uima.jcas.tcas.KeyPhraseAnnotation;
 import com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated;
@@ -49,6 +58,7 @@ import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.ADJ;
 import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.ADV;
 import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.N;
 import de.tudarmstadt.ukp.dkpro.core.api.lexmorph.type.pos.V;
+import de.tudarmstadt.ukp.dkpro.core.api.metadata.type.DocumentMetaData;
 import de.tudarmstadt.ukp.dkpro.core.api.ner.type.Location;
 import de.tudarmstadt.ukp.dkpro.core.api.ner.type.NamedEntity;
 import de.tudarmstadt.ukp.dkpro.core.api.ner.type.Organization;
@@ -83,13 +93,62 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	private int KEAPHRASE_RATIO;
 	
 	public static final String PARAM_MAX_NUMBER_OF_KEYPHRASES = "maxNumberOfKeyphrases";
-	@ConfigurationParameter(name = PARAM_MAX_NUMBER_OF_KEYPHRASES, defaultValue = "20")
+	@ConfigurationParameter(name = PARAM_MAX_NUMBER_OF_KEYPHRASES, defaultValue = "10")
 	private int MAX_NUMBER_OF_KEYPHRASES;
 	
+	public static final String PARAM_KEA_MAX_NUMBER_OF_KEYPHRASES = "maxNumberOfKeaKeyphrases";
+	@ConfigurationParameter(name = PARAM_KEA_MAX_NUMBER_OF_KEYPHRASES, defaultValue = "50")
+	private int MAX_NUMBER_OF_KEA_KEYPHRASES;
+	
+	public static final String PARAM_MAX_NUMBER_OF_WORDS_IN_KEYPHRASE = "maxNumberOfWordsInKeyphrase";
+	@ConfigurationParameter(name = PARAM_MAX_NUMBER_OF_WORDS_IN_KEYPHRASE, defaultValue = "10")
+	private int MAX_NUMBER_OF_WORDS_IN_KEYPHRASE ;
+	
+	public static final String PARAM_MIN_NUMBER_OF_WORDS_IN_KEYPHRASE = "minNumberOfWordsInKeyphrase";
+	@ConfigurationParameter(name = PARAM_MIN_NUMBER_OF_WORDS_IN_KEYPHRASE, defaultValue = "2")
+	private int MIN_NUMBER_OF_WORDS_IN_KEYPHRASE ;
 	
 	public static final String PARAM_EXTEND_KEYPHRASE_TO_CHUNK = "extendKeyphraseToChunk";
 	@ConfigurationParameter(name = PARAM_EXTEND_KEYPHRASE_TO_CHUNK, defaultValue = "true")
 	private boolean EXTEND_KEYPHRASE_TO_CHUNK;
+	
+	public static final String PARAM_EXTEND_TO_PP = "extendToPp";
+	@ConfigurationParameter(name = PARAM_EXTEND_TO_PP, defaultValue = "true")
+	private boolean EXTEND_TO_PP;
+	
+	
+	public static final String PARAM_NER_FILTER = "nerFilter";
+	@ConfigurationParameter(name = PARAM_NER_FILTER, defaultValue = "true")
+	private boolean NER_FILTER;
+	
+	
+	public static final String PARAM_DBPEDIA_FILTER = "dbpediaFilter";
+	@ConfigurationParameter(name = PARAM_DBPEDIA_FILTER, defaultValue = "true")
+	private boolean DBPEDIA_FILTER;
+	
+	//for determining potential of chunks
+	public static final String PARAM_DETERMINE_POS_OF_MANUAL = "determinePosOfManual";
+	@ConfigurationParameter(name = PARAM_DETERMINE_POS_OF_MANUAL, defaultValue = "false")
+	private boolean DETERMINE_POS_OF_MANUAL;
+	
+	
+	public static final String PARAM_LOAD_MANUAL_KEYPHRASES = "loadManualKeyphrases";
+	@ConfigurationParameter(name = PARAM_LOAD_MANUAL_KEYPHRASES, defaultValue = "false")
+	private boolean LOAD_MANUAL_KEYPHRASES;
+	
+	public static final String PARAM_POS_FILTER = "posFilter";
+	@ConfigurationParameter(name = PARAM_POS_FILTER, defaultValue = "false")
+	private boolean POS_FILTER;
+	
+	public static final String PARAM_DEPRECATED_FILTERS = "deprecatedFilters";
+	@ConfigurationParameter(name = PARAM_DEPRECATED_FILTERS, mandatory = false, defaultValue = " eumssiSetting ")
+	private String DEPRECATED_FILTERS;
+	
+//	@ConfigurationParameter(name = PARAM_DEPRECATED_FILTERS, mandatory = false, defaultValue = " ignoreNoDeprecatedKp ")
+	//EVAL_MODE: replaceKeyphrase replaces keyphrase with replacee, enrichKeyphrases adds enrich to keyphrase
+//	public static final String PARAM_EVAL_REPLACE_ENRICH = "evalReplaceEnrich";
+//	@ConfigurationParameter(name = PARAM_EVAL_REPLACE_ENRICH, defaultValue = "NO")
+//	private String EVAL_REPLACE_ENRICH;
 	
 	public static final String PARAM_ADJ_NOUN_LIST = "adjNounList";
 	@ConfigurationParameter(name = PARAM_ADJ_NOUN_LIST,  mandatory=false)//, defaultValue = "/com/iai/uima/kea/data/wordlists/en/ADJ-NOUN-relation.final")
@@ -122,6 +181,10 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	@ConfigurationParameter(name = PARAM_ABBREV_LONG_LIST, mandatory=false) // ,defaultValue = "/com/iai/uima/kea/data/wordlists/en/abbrev_long.final")
 	private String ABBREV_LONG_LIST;
 
+	public static final String PARAM_POS_COUNT_LIST = "posCountList";
+	@ConfigurationParameter(name = PARAM_POS_COUNT_LIST, mandatory=false) // ,defaultValue = "/com/iai/uima/kea/data/wordlists/en/posCount")
+	private String POS_COUNT_LIST;
+	
 	public static final String PARAM_KEYPHRASE_LIST = "keyphraseList";
 	@ConfigurationParameter(name = PARAM_KEYPHRASE_LIST, mandatory=false) // ,defaultValue = "/com/iai/uima/kea/data/wordlists/en/keyphraseList")
 	private String KEYPHRASE_LIST;
@@ -131,6 +194,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	private String STOPWORD_LIST;
 
 	private Hashtable<String, String> abbrev_long;
+	private Hashtable<String, String> pos_count;
 	private Hashtable<String, Integer> thesaurus_list;
 
 	private Stemmer getStemmer(String lang) {
@@ -163,18 +227,23 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			throws ResourceInitializationException {
 		super.initialize(aContext);
 
-		if (EXTEND_KEYPHRASE_TO_CHUNK){
+		
+//		if (!LANGUAGE.equals("en")){ // no chunker available for languages other than en
+//			EXTEND_KEYPHRASE_TO_CHUNK = false;
+//		}
+		
+		if (EXTEND_KEYPHRASE_TO_CHUNK || DETERMINE_POS_OF_MANUAL || POS_FILTER){
 		Properties props = new Properties();
 		props.setProperty("annotators", "tokenize,ssplit,pos,lemma"); 
 		pipeline = new StanfordCoreNLP(props);
 		}
-		
+
 		BufferedReader read_adj_noun;
 		BufferedReader read_verb_noun;
 		BufferedReader read_city_country;
 		BufferedReader read_country_region;
 		BufferedReader read_abbrev_long;
-		
+		BufferedReader read_pos_count;
 		
 		if (MODEL_LOCATION == null)
 			MODEL_LOCATION = "/com/iai/uima/kea/data/models/" + LANGUAGE + "/model";
@@ -197,6 +266,9 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		if (ABBREV_LONG_LIST == null)
 			ABBREV_LONG_LIST = "/com/iai/uima/kea/data/wordlists/" + LANGUAGE + "/abbrev_long.final";
 		
+		if (POS_COUNT_LIST == null)
+			POS_COUNT_LIST = "/com/iai/uima/kea/data/wordlists/" + LANGUAGE + "/posCount";
+		
 		if (KEYPHRASE_LIST == null)
 			KEYPHRASE_LIST = "/com/iai/uima/kea/data/wordlists/" + LANGUAGE + "/keyphraseList";
 		
@@ -215,6 +287,8 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 					getClass().getResourceAsStream(COUNTRY_REGION_LIST)));
 			read_abbrev_long = new BufferedReader(new InputStreamReader(
 					getClass().getResourceAsStream(ABBREV_LONG_LIST)));
+			read_pos_count = new BufferedReader(new InputStreamReader(
+					getClass().getResourceAsStream(POS_COUNT_LIST)));
 //			read_keyphrase_list = new BufferedReader(new InputStreamReader(
 //					getClass().getResourceAsStream(KEYPHRASE_LIST)));
 
@@ -265,6 +339,16 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 				 abbrev_long.put(content[0], content[1]);
 			}
 			read_abbrev_long.close();
+			
+			pos_count = new Hashtable<String, String>();
+
+			while ((line = read_pos_count.readLine()) != null) {
+				String[] content = line.split("=");
+				if (content.length >= 2)
+				 pos_count.put(content[0], content[1]);
+				
+			}
+			read_pos_count.close();
 			
 			thesaurus_list = new Hashtable<String, Integer>();
 
@@ -318,6 +402,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 
 		// 8. Stopwords
 		ke.setStopwords(getStopwords(LANGUAGE, STOPWORD_LIST));
+		
 		try {
 			ke.loadModel();
 		} catch (Exception e) {
@@ -331,13 +416,57 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 	public void process(JCas aJCas) throws AnalysisEngineProcessException {
 
 		int numOfwords = aJCas.getDocumentText().split("[^\\s]").length;
+		HashSet<String> manualKeyPhrases = new HashSet<String>();
+		
+		if (LOAD_MANUAL_KEYPHRASES || DETERMINE_POS_OF_MANUAL){
+		
+		DocumentMetaData meta = DocumentMetaData.get(aJCas);
+		String baseUri = meta.getDocumentBaseUri();
+		String docID = meta.getDocumentId().substring(0, meta.getDocumentId().lastIndexOf('.'));
+		URI uri = null;
+		try {
+			uri = new URI(baseUri + "manual_keyphrases/" + docID + ".key");
+		} catch (URISyntaxException e1) {
+			e1.printStackTrace();
+		}
+		BufferedReader br = null;
+		try {
+			br = new BufferedReader(new FileReader(new File(uri)));
+			String line;
+			while ((line = br.readLine()) != null) {
+				manualKeyPhrases.add(line.toLowerCase().trim());
+//				System.out.println("MANUAL:" + line.toLowerCase().trim());
+			}
+			br.close();
+		} catch (FileNotFoundException e) {
+			System.err.println("Keyphrase file " + uri + " could not be found");
+			return;
+		} catch (IOException e) {
+			throw new AnalysisEngineProcessException(e);
+		}
+	}
 
-		//SP tut nicht
 		
 		
-		ke.setNumPhrases(numOfwords / KEAPHRASE_RATIO);
+		
+		
+//		String[] chunkList = null;
+		
+//		String [] chunkList = {"World War II", "rising number", "European migrant crisis"};
+//		if (EXTEND_KEYPHRASE_TO_CHUNK)
+//			ke.setChunkList(chunkList);
+		
+		if (KEAPHRASE_RATIO != 0){
+		ke.setNumPhrases(numOfwords / KEAPHRASE_RATIO); //for platform
+//		System.out.println("RATIO applied..");
+		}
+		else {
+		ke.setNumPhrases(MAX_NUMBER_OF_KEA_KEYPHRASES); //for evaluation
+//		System.out.println("MAX_NUMBER_OF_KEA_KEYPHRASES applied..");
+		}
 //        System.out.println("KEAPHRASE_RATIO" + KEAPHRASE_RATIO);
-        
+		
+//		 System.out.println("NER_FILTER" + NER_FILTER);
         
 		ArrayList<KeyPhrase> keyPhrases = ke.extractKeyphrasesToList(aJCas
 				.getDocumentText());
@@ -356,49 +485,185 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		Collections.sort(keyPhrasesByRank, new KeyPhraseByRankComparator());
 		
 
-//		HashSet<KeyPhrase> deprecatedKeyPhrases = new HashSet<KeyPhrase>();
+		HashSet<String> keaKeyPhrases = new HashSet<String>();
+		
+		
 		HashSet<String> deprecatedKeyPhrases = new HashSet<String>();
-//		
+		HashSet<String> deprecatedPosFilterKeyPhrases = new HashSet<String>();
+		HashSet<String>  dbpediaCoveredText = new HashSet<String>();
+//		 
+		HashMap<String,Integer> posSequenceCount = new HashMap<String,Integer>();
+		
+		HashMap<String,String> keaKeyPos = new HashMap<String,String>();
+		HashMap<String,String> manualKeyPos = new HashMap<String,String>();
+		HashSet<String>  manualKeyFound = new HashSet<String>();
+		
+		HashMap<String,Integer> keaPosSequenceCount = new HashMap<String,Integer>();
+		HashSet<String>  keaKeyFound = new HashSet<String>();
+		
 		//SPnew language-specific settings, should be externalized
 		 HashSet<String> verbTag = new HashSet<String>(); 
 		 HashSet<String> adjTag = new HashSet<String>();
+		 
+		 HashSet<Integer> rankGroupFound = new HashSet<Integer>();
+		 
 		 HashSet<String> stopWordExceptionSet = new HashSet<String>();
 		 HashSet<String> standaloneStopWordSet = new HashSet<String>();
 		 HashSet<String> skipAsInitialPosTag = new HashSet<String>();
+		 HashSet<String> skipAsInitialToken = new HashSet<String>();
 		 HashSet<String> skipAsFinalPosTag = new HashSet<String>();
-		 
+		 HashSet<String> skipAsPreposition = new HashSet<String>();
+		 HashSet<String> postnominalPreposition = new HashSet<String>();
 		 boolean postNominalAdjFilter;
 		 boolean advFilter;
+		 boolean verbFilter;
 		 boolean stopwordFilter;
-		 boolean finiteVerbFilter;
-		 boolean incompleteNerFilter;
-		 boolean kpEqualsNerFilter;
+//		 boolean finiteVerbFilter;
+		 boolean incompleteNerFilter = true;
+		 boolean kpEqualsNerFilter = true;
 		 boolean containedInLargerHigherRankedKeyphraseFilter;
 		 boolean replaceKeyphrases;
 		 boolean enrichKeyphrases;
 		 boolean stopWordException;
 		 boolean standaloneStopwordFilter;
 		 boolean rerankBasedLongKeyphrases;
-		 boolean chunkBasedLongKeyphrases;
-		 boolean thesaurusFilter;
+		 boolean turnoffAllDeprecated;
+		 boolean turnonAllDeprecatedExceptNerFilter;
+		 boolean deprecatedOnlyPosFilter;
+		
 		 
+		 turnoffAllDeprecated = false;
+		 turnonAllDeprecatedExceptNerFilter = false;
+		 deprecatedOnlyPosFilter = false;
+		
+		 
+		
+		 
+		 
+		 
+//		 EXTEND_KEYPHRASE_TO_CHUNK = false; //XXXX
 		 postNominalAdjFilter = true;
 		 stopwordFilter = true;
 		 stopWordException = false;
 		 standaloneStopwordFilter = true;
 		 advFilter = true;
-		 finiteVerbFilter = true;
+		 verbFilter = true;
+		 
 		 replaceKeyphrases = true;
 		 enrichKeyphrases = true;
-		 incompleteNerFilter = true;
-		 kpEqualsNerFilter = true;
+		 
+//		 System.out.println("NER_FILTER" + NER_FILTER);
+		 
 		 containedInLargerHigherRankedKeyphraseFilter = false;
 		 
 		 rerankBasedLongKeyphrases = false;
-//		 thesaurusFilter = false;
-		 chunkBasedLongKeyphrases = true;
+		 
+//		 System.out.println("DEPSETTING" + DEPRECATED_FILTERS);
+		 if (DEPRECATED_FILTERS.equals(" ignoreNoDeprecatedKp ")){
+			 turnoffAllDeprecated = true;
+		 }
+		 else if (DEPRECATED_FILTERS.equals(" turnonAllExceptNerFilter ")){
+			 turnonAllDeprecatedExceptNerFilter = true;
+			 System.out.println("DEPSETTING" + DEPRECATED_FILTERS);
+		 }
+		 else if (DEPRECATED_FILTERS.equals(" ignoreAllDeprecatedKp ")){
+			 POS_FILTER = false;
+		 }
+		 else if (DEPRECATED_FILTERS.equals(" posFilter ")){
+			 deprecatedOnlyPosFilter = true;
+			 POS_FILTER = true;
+		 }
+		 
+		 if (DEPRECATED_FILTERS.equals(" eumssiSetting ")){
+//			 System.out.println("DEPSETTING" + DEPRECATED_FILTERS);
+//			 EXTEND_KEYPHRASE_TO_CHUNK = false;
+			 postNominalAdjFilter = false;
+			 stopwordFilter = false;
+			 stopWordException = false;
+			 standaloneStopwordFilter = false;
+			 advFilter = false;
+			 verbFilter = false;
+//			 replaceKeyphrases = false;
+//			 enrichKeyphrases = false;
+//			 incompleteNerFilter = false;
+			 kpEqualsNerFilter = false;
+//			 containedInLargerHigherRankedKeyphraseFilter = false;
+			 rerankBasedLongKeyphrases = false;
+			 POS_FILTER = false;
+		 }
+		 
+		 if (turnoffAllDeprecated == true){
+			 EXTEND_KEYPHRASE_TO_CHUNK = false;
+			 postNominalAdjFilter = false;
+			 stopwordFilter = false;
+			 stopWordException = false;
+			 standaloneStopwordFilter = false;
+			 advFilter = false;
+			 verbFilter = false;
+			 replaceKeyphrases = false;
+			 enrichKeyphrases = false;
+			 incompleteNerFilter = false;
+			 kpEqualsNerFilter = false;
+			 containedInLargerHigherRankedKeyphraseFilter = false;
+			 rerankBasedLongKeyphrases = false;
+			 POS_FILTER = false;
+		 }
+		 
+		 if (turnonAllDeprecatedExceptNerFilter == true){
+//			 EXTEND_KEYPHRASE_TO_CHUNK = false;
+//			 postNominalAdjFilter = false;
+//			 stopwordFilter = false;
+//			 stopWordException = false;
+//			 standaloneStopwordFilter = false;
+//			 advFilter = false;
+//			 verbFilter = false;
+//			 replaceKeyphrases = false;
+//			 enrichKeyphrases = false;
+//			 incompleteNerFilter = false;
+			 kpEqualsNerFilter = false;
+//			 containedInLargerHigherRankedKeyphraseFilter = false;
+//			 rerankBasedLongKeyphrases = false;
+			 POS_FILTER = false;
+		 }
+		 if (NER_FILTER){
+			 incompleteNerFilter = true;
+			 kpEqualsNerFilter = true;
+			 }
+			 else if (NER_FILTER == false){
+				 incompleteNerFilter = true;
+				 kpEqualsNerFilter = false;
+				 }
+		 
+		 if (deprecatedOnlyPosFilter == true){
+			 EXTEND_KEYPHRASE_TO_CHUNK = false;
+			 postNominalAdjFilter = false;
+			 stopwordFilter = false;
+			 stopWordException = false;
+			 standaloneStopwordFilter = false;
+			 advFilter = false;
+			 verbFilter = false;
+			 replaceKeyphrases = false;
+			 enrichKeyphrases = false;
+			 incompleteNerFilter = false;
+			 kpEqualsNerFilter = false;
+			 containedInLargerHigherRankedKeyphraseFilter = false;
+			 rerankBasedLongKeyphrases = false;
+			 POS_FILTER = true;
+		 }
 		 
 		 boolean printZw = false; //SP Zwischenausgabe
+		 
+		 skipAsInitialToken.add("]");  //case exists
+		 skipAsInitialToken.add("[");
+		 skipAsInitialToken.add(")");
+		 skipAsInitialToken.add("(");
+		 skipAsInitialToken.add(",");
+		 skipAsInitialToken.add(";");
+		 skipAsInitialToken.add(":");
+		 skipAsInitialToken.add("\"");
+		 skipAsInitialToken.add("*");
+		 skipAsInitialToken.add("-");
+		 skipAsInitialToken.add("_");
 		 
 		 if (LANGUAGE == "en"){ //problems with tokenizer, does not split John's  or Marks/dpa etc
 			 postNominalAdjFilter = true;
@@ -417,6 +682,8 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			 stopWordExceptionSet.add("in");
 			 stopWordExceptionSet.add("for");
 			 
+			 
+			 
 			 skipAsInitialPosTag.add("DT");
 			 skipAsInitialPosTag.add("PRP");
 			 skipAsInitialPosTag.add("PRP$");
@@ -426,6 +693,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			 skipAsInitialPosTag.add("WDT");
 			 skipAsInitialPosTag.add("TO");
 			 skipAsInitialPosTag.add("CC");
+			 skipAsInitialPosTag.add("CD");
 			 
 			 skipAsFinalPosTag.add("DT");
 			 skipAsFinalPosTag.add("PRP");
@@ -436,6 +704,9 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			 skipAsFinalPosTag.add("WDT");
 			 skipAsFinalPosTag.add("TO");
 			 skipAsFinalPosTag.add("CC");
+			 skipAsFinalPosTag.add("CD");
+			 skipAsFinalPosTag.add("VBG");
+			 skipAsFinalPosTag.add("VBD");
 			 
 			 standaloneStopWordSet.add("country");
 			 standaloneStopWordSet.add("countries");
@@ -455,8 +726,40 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			 standaloneStopWordSet.add("numbers");
 			 standaloneStopWordSet.add("time");
 			 
+			 //not used any more, use postnominalPreposition instead
+			 skipAsPreposition.add("like");
+			 skipAsPreposition.add("as");
+			 skipAsPreposition.add("than");
+			 skipAsPreposition.add("over");
+			 skipAsPreposition.add("that");
+			 skipAsPreposition.add("for");
+			 skipAsPreposition.add("such");
+			 skipAsPreposition.add("between");
+			 skipAsPreposition.add("with");
+			 skipAsPreposition.add("among");
+			 skipAsPreposition.add("unless");
+			 skipAsPreposition.add("after");
+			 skipAsPreposition.add("before");
+			 skipAsPreposition.add("because");
+			 skipAsPreposition.add("below");
+			 skipAsPreposition.add("around");
+			 skipAsPreposition.add("along");
+			 skipAsPreposition.add("beyond");
+			 skipAsPreposition.add("if");
 			 
-			 
+			 postnominalPreposition.add("in");
+			 postnominalPreposition.add("of");
+			 postnominalPreposition.add("for");
+			 postnominalPreposition.add("from");
+			 postnominalPreposition.add("at");
+			 postnominalPreposition.add("on");
+			 postnominalPreposition.add("to");
+			 postnominalPreposition.add("against");
+			 postnominalPreposition.add("with");
+			 postnominalPreposition.add("as");
+			 postnominalPreposition.add("by");
+			 postnominalPreposition.add("between");
+			 postnominalPreposition.add("into");
 		 }
 		 else if (LANGUAGE == "de"){
 			 postNominalAdjFilter = true;
@@ -476,12 +779,17 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		
 
 		
-		 if (EXTEND_KEYPHRASE_TO_CHUNK){
+		 if (EXTEND_KEYPHRASE_TO_CHUNK || DETERMINE_POS_OF_MANUAL || POS_FILTER){
 			pipeline.annotate(document); 
 		 
+			boolean chunkFound = false;
 			
 			List<CoreMap> sentences = document.get(SentencesAnnotation.class);
 			
+			for (KeyPhrase kp : keyPhrases) {
+				
+				keaKeyPhrases.add(kp.getUnstemmed().toLowerCase());
+			}
 		 
 				
 			for (CoreMap sentence : sentences) {
@@ -497,9 +805,98 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 				sentenceAnn.setBegin(beginSentence);
 				sentenceAnn.setEnd(endSentence);
 				sentenceAnn.addToIndexes();
+				
+				if (JCasUtil.contains(aJCas, sentenceAnn, Chunk.class)){
+					chunkFound = true;
+				}
+				
+				List<Token> tokens= JCasUtil.selectCovered(aJCas,
+						Token.class, sentenceAnn);
+				
+				
+				//Determine POS  of kea keyphrases
+				if (POS_FILTER){
+				DeterminePosResult keaResult = determinePos ( tokens,  keaKeyPhrases,  aJCas, keaPosSequenceCount, keaKeyFound, keaKeyPos);
+				keaKeyPos = keaResult.getKeyPos();
+				keaPosSequenceCount = keaResult.getPosSequenceCount();
+				keaKeyFound = keaResult.getKeyFound();
+				}
+				
+				//Determine POS sequence of manual keyphrases
+			if (DETERMINE_POS_OF_MANUAL && manualKeyPhrases != null ){	
+				DeterminePosResult result = determinePos ( tokens,  manualKeyPhrases,  aJCas, posSequenceCount, manualKeyFound, manualKeyPos);
+				posSequenceCount = result.getPosSequenceCount();
+				manualKeyFound = result.getKeyFound();
+				manualKeyPos = result.getKeyPos();
+			}
+		
+				List<DBpediaResource> dbpeds = JCasUtil.selectCovered(aJCas, 
+						DBpediaResource.class, sentenceAnn);
+				
+				
+//				List<TopDBpediaResource> dbpeds = JCasUtil.selectCovered(aJCas, 
+//						TopDBpediaResource.class, sentenceAnn);
+				
+				for (DBpediaResource dbped : dbpeds){
+//					dbpediaCoveredText.add(dbped.getLabel().toLowerCase().trim());
+//					System.out.println("DBPEDIA LABEL:" + dbped.getLabel());
+					dbpediaCoveredText.add(dbped.getCoveredText().toLowerCase().trim());
+//					System.out.println("DBPEDIA COVERED TEXT:" + dbped.getCoveredText().toLowerCase()); 
+				}
+				
+				
+			}
+			
+			
+//			keaKeyPos
+			if (POS_FILTER){
+			Set<String> keaKeySet = keaKeyPos.keySet();
+			 Iterator<String> keaKeySetIterator = keaKeySet.iterator();
+
+			 while (keaKeySetIterator.hasNext()) {
+				 String keaKey = keaKeySetIterator.next();
+//				 System.out.println("KEA" + keaKey + "POS" +  keaKeyPos.get(keaKey));
+//				 String keaPos = keaKeyPos.get(keaKey).replaceFirst("\\[", "").replaceAll("\\]$","");
+				 String keaPos = keaKeyPos.get(keaKey);
+						if (!pos_count.containsKey(keaPos)){
+							String depkeaKey = keaKey.replaceAll(", ", " ").replaceFirst("\\[", "").replaceAll("\\]$","");
+							deprecatedPosFilterKeyPhrases.add(depkeaKey);
+//							System.out.println("DEPKEAKEY" + depkeaKey + "FILTEREDPOS" + keaPos);
+//							later:isKeyPhraseDeprecated = isUndocumentedPosSequence = true;
+						}
+//						else{
+//							System.out.println("NOT FILTERED" + keaKey + " POS " + keaPos );
+//						}
+			 }
+			}
+			
+			if (DETERMINE_POS_OF_MANUAL){
+			 Set<String> keySet = posSequenceCount.keySet();
+			 Iterator<String> keySetIterator = keySet.iterator();
+			 StringBuilder posCount = new StringBuilder("");
+			 while (keySetIterator.hasNext()) {
+			    
+			    String key = keySetIterator.next();
+//			    System.out.println("POS: " + key + " Count: " + posSequenceCount.get(key));
+			    posCount.append(key);
+			    posCount.append(";");
+			    posCount.append(posSequenceCount.get(key));
+			    posCount.append(";");
+			    
+			 }
+//			 System.out.println("STRINGBUILD" + posCount );
+			 com.iai.uima.jcas.tcas.posSequenceCount posCountAnno = new com.iai.uima.jcas.tcas.posSequenceCount(aJCas);
+			 posCountAnno.setPosSequenceCount(posCount.toString());
+			 posCountAnno.addToIndexes();
+//			 System.out.println("MANCOUNT:" + manualKeyPhrases.size());
+			}
+			
+			if (!chunkFound){
+				EXTEND_KEYPHRASE_TO_CHUNK = false;
 			}
 		 }
 
+		 
 			
 		    Collection<N> nouns = select(aJCas, N.class);
 			Collection<ADJ> adjs = select(aJCas, ADJ.class);
@@ -550,51 +947,46 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			HashSet<Location> namedLocationsList = new HashSet<Location>(namedLocations);
 			HashSet<Organization> namedOrganizationsList = new HashSet<Organization>(namedOrganizations);
 			HashSet<NamedEntity>namedEntitiesList = new HashSet<NamedEntity>(namedEntities);
-			
+			HashSet<String> namedEntitiesCoveredText = new HashSet<String>();
 			
 			List<KeyPhraseAnnotation> listKeyPhraseAnnotation = new ArrayList<KeyPhraseAnnotation>();
 			
 			HashMap<String, Integer> kpChunkBasedRank = new HashMap<String, Integer>();
 			HashSet<String> kpChunkBasedBeginEnd = new HashSet<String>();
+//			HashSet<String> replaceEnrich = new HashSet<String>();
 			String kpBeginEndNew = null;
 			HashMap<String, Integer> kpReRank = new HashMap<String, Integer>();
 			//environment - environmental
 			HashMap<String, Integer> kpReplaceReRank = new HashMap<String, Integer>();
 //			HashSet<String> kpReplaceDeprecated = new HashSet<String>();
 			HashMap<String,String> upCapTolowCap = new HashMap<String,String>();
+			HashMap<String,String> replaceEnrich = new HashMap<String,String>();
 			HashMap<String,Integer> keyPhraseToRank = new HashMap<String,Integer>();
+			
+			
+			//avoid doublettes if matcherLowerCase and matcher hit
+			HashSet<String> kpAnnotationBeginEnd = new HashSet<String>();
 			
 //			Collection<KeyPhraseAnnotation> addedKeyPhrases = select(aJCas, KeyPhraseAnnotation.class);
 //			Collection<KeyPhraseAnnotation> allKeyPhrases = select(aJCas, KeyPhraseAnnotation.class);
 			
-		for (KeyPhrase kp : keyPhrases) {
-//			kpRank.put(kp.getUnstemmed().toLowerCase(), kp.getRank());
-//			System.out.println("KP1 " + kp.getUnstemmed().toLowerCase());
+			
+			for (NamedEntity ner : namedEntitiesList){
+				namedEntitiesCoveredText.add(ner.getCoveredText().toLowerCase());
+//				System.out.println("NER COVERED TEXT:" + ner.getCoveredText().toLowerCase()); 
+			}
 			
 			
+			
+	KP:	for (KeyPhrase kp : keyPhrases) {
+			
+//			keaKeyPhrases.add(kp.getUnstemmed().toLowerCase());
+
+			
+		
 			String patternLowerCaseString = null;
 			Pattern patternLowerCase;
-			//Restriction to NON-NER does not help because match.find and matchLoserCase.find()
-			//apply in or-statement
-//			String kpLowerCase = null;
-//			if (!kp.getUnstemmed().toLowerCase().equals(kp.getUnstemmed()) && 
-//					!namedEntitiesList.isEmpty()){
-//				kpLowerCase = kp.getUnstemmed().toLowerCase();
-//				
-//				
-//			NER:	for (NamedEntity ner : namedEntitiesList){
-//					if (ner.getCoveredText().equals(kp.getUnstemmed())){
-//						kpLowerCase = null;
-//						break NER;
-//					}
-//				}
-//				if (kpLowerCase != null){
-//					System.out.println("UPPER CASE NO NER " + kp.getUnstemmed());
-//					patternLowerCaseString = String.format("(\\b)(%s)(\\b)", kp.getUnstemmed().toLowerCase());
-//					patternLowerCase = Pattern.compile(patternLowerCaseString);
-//					
-//				}
-//			}
+			
 			
 			// Fracking -> fracking
 			patternLowerCaseString = String.format("(\\b)(%s)(\\b)", kp.getUnstemmed().toLowerCase());
@@ -604,7 +996,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			Pattern pattern = Pattern.compile(patternString);
 			
 			
-			
+			boolean isUndocumentedPosSequence = false;
 			boolean containsStopword = false;
 			boolean isContainedInLargerKeyprase = false;
 //			boolean isContainedInDeprecatedKeyPhrase = false;
@@ -635,14 +1027,21 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			boolean isDeprecatedEqualsNer = false;
 			
 			//score for similarity with thesaurus 
-			int thesaurusScore = 0;
+//			int thesaurusScore = 0;
 			
 			String keyPhraseReplacee = kp.getUnstemmed();
 			HashSet<String> kpSet= new HashSet<String>(Arrays.asList(kp.getUnstemmed().toLowerCase().split(" ")));
 
 			String[] kpSplit = kp.getUnstemmed().split(" ");
 			
-	
+			if (POS_FILTER){
+				if (deprecatedPosFilterKeyPhrases.contains(kp.getUnstemmed().toLowerCase())){
+					isKeyPhraseDeprecated = isUndocumentedPosSequence = true;
+//					System.out.println("deprecated POS_FILTER" + kp.getUnstemmed().toLowerCase());
+				}
+			}
+			
+			
 			if (stopwordFilter){
 			for (String sw : kpSplit) {
 				if (ke.getStopwords().isStopword(sw)){
@@ -929,11 +1328,12 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			if (incompleteNerFilter && isDeprecatedContainsIncompleteNer == true){
 				if (printZw) { System.out.println("DEP NER INCOMPLETE kp " +  kp.getUnstemmed());}
 				isKeyPhraseDeprecated = true;
+				isDeprecatedContainsIncompleteNer = true;
 			}
 			if (kpEqualsNerFilter && isDeprecatedEqualsNer){
 				if (printZw) { System.out.println("DEP NER EQUALS kp " +  kp.getUnstemmed());}
 				isKeyPhraseDeprecated = true;
-//				isDeprecatedEqualsNer = true;
+				isDeprecatedEqualsNer = true;
 				//SP deprecated Type missing
 			}
 			
@@ -941,7 +1341,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			
 			
 	
-			
+	if (verbFilter){		
 	FIV:	for (V finV : verbsList){
 				// keyphrases that are finite verbs are deprecated
 				if (verbTag.contains(finV.getPosValue())
@@ -974,6 +1374,7 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
                 }
 				}
 			}	
+	}
 			
 		if (replaceKeyphrases){
 ADJNOUN:	for (String adj : adj_noun.keySet()){
@@ -1007,25 +1408,27 @@ ADJNOUN:	for (String adj : adj_noun.keySet()){
 				  if (ner.getCoveredText().equals(keyPhraseReplacee)){
 				  isKeyPhraseReplaced = isAdjectiveReplacedWithNoun = false;
 				  isKeyPhraseDeprecated = isDeprecatedEqualsNer = true;
-//				  System.out.println("DEP REPLACED IS NER KP " + kp.getUnstemmed()+ "REP " + keyPhraseReplacee + "NER" + ner.getCoveredText());
+				  if (printZw) {System.out.println("DEP REPLACED IS NER KP " + kp.getUnstemmed()+ "REP " + keyPhraseReplacee + "NER" + ner.getCoveredText());}
 				  break NER;
 				  }  
 			}
 		  }
 		  //
-		if (isKeyPhraseReplaced){
+		if (isKeyPhraseReplaced && EXTEND_KEYPHRASE_TO_CHUNK){
 KPREPLACE:  for (KeyPhrase kpRep : keyPhrases){
+//	if (printZw) {System.out.println("KP ALL " + kpRep.getUnstemmed());}
 					  if (kpRep.getUnstemmed().equalsIgnoreCase(keyPhraseReplacee)){
+						  //environmental - environment
 						//kp is deprecated, kpRep is preferred
-						  isKeyPhraseDeprecated = true;
-						  isKeyPhraseReplaced = isAdjectiveReplacedWithNoun = false;
+//						  isKeyPhraseDeprecated = true;
+						  isKeyPhraseReplaced = isAdjectiveReplacedWithNoun = false; //unclear whether it makes sense
 						  if (kpRep.getRank()>kp.getRank()){
 						// kpRep with higher score  gets score of kp
 						     kpReplaceReRank.put(kpRep.getUnstemmed(), kp.getRank());
 //						     System.out.println("REPLACEDRERANK " + kp.getUnstemmed()+ kp.getRank() +
 //						    		 "REP "  + kpRep.getUnstemmed() + kpRep.getRank());	
 						  }
-//						  System.out.println("DEP REPLACED IS NOUN KP " + kp.getUnstemmed()+ "REP " + keyPhraseReplacee + "NOUN" + kpRep.getUnstemmed());
+						 if (printZw) {System.out.println("DEP REPLACED IS NOUN KP " + kp.getUnstemmed()+ "REP " + keyPhraseReplacee + "NOUN" + kpRep.getUnstemmed());}
 						  break KPREPLACE;
 					  }
 				  }	  
@@ -1121,39 +1524,7 @@ LONGABB:		for (Entry<String, String> entry : abbrev_long.entrySet()){
 			}
 			
 
-//			//"European immigrant crisis" rank=14, "immigrant" rank=0
-			if (rerankBasedLongKeyphrases && !deprecatedKeyPhrases.contains(kp.getUnstemmed().toLowerCase())){
-//				System.out.println("KPpreferLonger " + kp.getUnstemmed().toLowerCase());
-OTHERFORLARGERLOWERRANKED: for (KeyPhrase other2 : keyPhrasesByRank) {
-//					System.out.println("KPCompare " + kp.getUnstemmed().toLowerCase() + 
-//							":" + kp.getRank() +
-//							"::" + other2.getUnstemmed().toLowerCase()+ 
-//							":" + other2.getRank());
-				String patternOther2String = String.format("(\\b)(%s)(\\b)", other2.getUnstemmed().toLowerCase());
-				Pattern patternOther2 = Pattern.compile(patternOther2String);
-				Matcher matcherOther2 = patternOther2.matcher(
-						kp.getUnstemmed().toLowerCase());
-//				matcherOther.find()
-//					if (kp.getUnstemmed().toLowerCase().contains(other2.getUnstemmed().toLowerCase()) 
-					if (	matcherOther2.find() 
-							&&	!other2.getUnstemmed().equalsIgnoreCase(kp.getUnstemmed())	//ORI
-							&& !deprecatedKeyPhrases.contains(other2.getUnstemmed().toLowerCase())){ 
-//						System.out.println("MATCH " + kp.getUnstemmed() + 
-//								"other " + other2.getUnstemmed().toLowerCase());
-						if (other2.getRank() < kp.getRank()){
-//							isKeyPhraseDeprecated = isContainedInLargerKeyprase = true;
-							if (printZw) {System.out.println("RERANKING Larger lower ranked kp " 
-							 + kp.getUnstemmed() + ":" + kp.getRank() + 
-							 "other " + other2.getUnstemmed().toLowerCase()
-							 + ":" + other2.getRank());}
-							kpReRank.put(kp.getUnstemmed().toLowerCase(), other2.getRank());
-							break OTHERFORLARGERLOWERRANKED;
-							
-						}
-					}
-				}
-			} //rerankBasedLongKeyphrases
-			
+
 
 			KeyPhraseAnnotation annotation;
 			Matcher matcher = pattern.matcher(
@@ -1161,7 +1532,8 @@ OTHERFORLARGERLOWERRANKED: for (KeyPhrase other2 : keyPhrasesByRank) {
 			
 			//For Fracking - fracking
 			Matcher matcherLowerCase = patternLowerCase.matcher(
-					aJCas.getDocumentText());
+					aJCas.getDocumentText()); 
+			String kpOffsets = null;
 			
 MATCHLOWCASE:		while (matcherLowerCase.find()) {
 				
@@ -1185,6 +1557,9 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 					.setContainsIncompleteNer(isDeprecatedContainsIncompleteNer);
 					((KeyPhraseAnnotationDeprecated) annotation)
 					.setEqualsNer(isDeprecatedEqualsNer);
+					((KeyPhraseAnnotationDeprecated) annotation)
+					.setPosFilter(isUndocumentedPosSequence);
+					
 				} else if (isKeyPhraseReplaced) {
 //					System.out.println("REPLACED " + kp.getUnstemmed());
 					annotation = new KeyPhraseAnnotationReplaced(aJCas);
@@ -1194,6 +1569,8 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 				    .setIsVerbReplacedWithNoun(isVerbReplacedWithNoun);
 				((KeyPhraseAnnotationReplaced) annotation)
 					.setReplacee(keyPhraseReplacee);
+				replaceEnrich.put(kp.getUnstemmed(), keyPhraseReplacee);
+				
 				} else if (isKeyPhraseEnriched) {
 //					System.out.println("ENRICHED " + kp.getUnstemmed());
 					annotation = new KeyPhraseAnnotationEnriched(aJCas);
@@ -1207,10 +1584,12 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 					.setEnrichedWithRegion(isEnrichedWithRegion);
 					((KeyPhraseAnnotationEnriched) annotation)
 					.setEnrichment(keyPhraseReplacee);
+					replaceEnrich.put(kp.getUnstemmed(), keyPhraseReplacee);
 					
 				} else {
 //					System.out.println("NORMAL " + kp.getUnstemmed());
 					annotation = new KeyPhraseAnnotation(aJCas);
+					
 				}
 
 
@@ -1223,29 +1602,59 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 				annotation.setKeyPhrase(kp.getUnstemmed());
 //				System.out.println("ORIGINAL" + kp.getUnstemmed());
 				}
+				
+				
+				
+//					if (isKeyPhraseReplaced && EVAL_REPLACE_ENRICH.contains("REPLACE")){
+//						annotation.setKeyPhrase(keyPhraseReplacee);
+//						if (printZw) {System.out.println("EVAL_MODE REPLACE");}
+//					}
+//					else if (isKeyPhraseEnriched && EVAL_REPLACE_ENRICH.contains("ENRICH")){
+//						KeyPhraseAnnotation annotationAdd = new KeyPhraseAnnotationEnriched(aJCas);
+//						annotationAdd.setKeyPhrase(keyPhraseReplacee);
+//						annotationAdd.setProbability(kp.getProbability());
+//						annotationAdd.setRank(kp.getRank()); //later revised
+//						annotationAdd.setStem("ADD");
+//						annotationAdd.setBegin(matcher.start(2));  //SPnew
+//						annotationAdd.setEnd(matcher.end(2));
+//						annotationAdd.setLanguage(LANGUAGE);
+//						listKeyPhraseAnnotation.add(annotationAdd);
+//						if (printZw) {System.out.println("EVAL_MODE ENRICH");}
+//						
+//					}
+				
+				
 				annotation.setProbability(kp.getProbability());
 				annotation.setStem(kp.getStemmed());
 				//hits if replacee follows replaced (i.e. is shorter
 				
 				annotation.setRank(kp.getRank()); //later revised
+				annotation.setRankGroup(kp.getRank());
 				
 					annotation.setBegin(matcherLowerCase.start(2)); 
 					annotation.setEnd(matcherLowerCase.end(2));
+					kpOffsets = "" + matcherLowerCase.start(2) + "-" + matcherLowerCase.end(2);
+					kpAnnotationBeginEnd.add(kpOffsets);
 //					System.out.println("LowerCase " + annotation.getKeyPhrase() + "RANK" + annotation.getRank() + " " + matcherLowerCase.start(2) + "-" + matcherLowerCase.end(2));
 				
 
 				
 				annotation.setLanguage(LANGUAGE);
 				listKeyPhraseAnnotation.add(annotation);
-//				annotation.addToIndexes(); //later
+
+
+//					annotation.addToIndexes(); //later
 				
 			}//end matcherLowerCase.find()
 //			
 			
 			
 			
-			while (matcher.find()) {
-
+	MATCHER:		while (matcher.find()) {
+				kpOffsets = "" + matcher.start(2) + "-" + matcher.end(2);
+				if (kpAnnotationBeginEnd.contains(kpOffsets)){
+					continue MATCHER;
+				}
 				if (isKeyPhraseDeprecated) {
 //					System.out.println("DEPRECATED " + kp.getUnstemmed());
 					annotation = new KeyPhraseAnnotationDeprecated(aJCas);
@@ -1265,6 +1674,8 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 					.setContainsIncompleteNer(isDeprecatedContainsIncompleteNer);
 					((KeyPhraseAnnotationDeprecated) annotation)
 					.setEqualsNer(isDeprecatedEqualsNer);
+					((KeyPhraseAnnotationDeprecated) annotation)
+					.setPosFilter(isUndocumentedPosSequence);
 				} else if (isKeyPhraseReplaced) {
 //					System.out.println("REPLACED " + kp.getUnstemmed());
 					annotation = new KeyPhraseAnnotationReplaced(aJCas);
@@ -1274,6 +1685,7 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 				    .setIsVerbReplacedWithNoun(isVerbReplacedWithNoun);
 				((KeyPhraseAnnotationReplaced) annotation)
 					.setReplacee(keyPhraseReplacee);
+				replaceEnrich.put(kp.getUnstemmed(), keyPhraseReplacee);
 				} else if (isKeyPhraseEnriched) {
 //					System.out.println("ENRICHED " + kp.getUnstemmed());
 					annotation = new KeyPhraseAnnotationEnriched(aJCas);
@@ -1287,6 +1699,8 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 					.setEnrichedWithRegion(isEnrichedWithRegion);
 					((KeyPhraseAnnotationEnriched) annotation)
 					.setEnrichment(keyPhraseReplacee);
+					replaceEnrich.put(kp.getUnstemmed(), keyPhraseReplacee);
+					
 					
 				} else {
 //					System.out.println("NORMAL " + kp.getUnstemmed());
@@ -1301,16 +1715,42 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 				else {
 //				System.out.println("ORIGINAL matcher" + matcher.group(2));
 				annotation.setKeyPhrase(kp.getUnstemmed());
+				
+				
+				
 				}
 //				System.out.println("LOWER CASE ONLY" + kp.getUnstemmed());
 //				}
 				
-//				annotation.setKeyPhrase(kp.getUnstemmed());
+				
+				
+				annotation.setKeyPhrase(kp.getUnstemmed());
+				
+			
+//					if (isKeyPhraseReplaced && EVAL_REPLACE_ENRICH.contains("REPLACE")){
+//						annotation.setKeyPhrase(keyPhraseReplacee);
+//						if (printZw) {System.out.println("EVAL_MODE REPLACE");}
+//					}
+//					else if (isKeyPhraseEnriched && EVAL_REPLACE_ENRICH.contains("ENRICH")){
+//						KeyPhraseAnnotation annotationAdd = new KeyPhraseAnnotationEnriched(aJCas);
+//						annotationAdd.setKeyPhrase(keyPhraseReplacee);
+//						annotationAdd.setProbability(kp.getProbability());
+//						annotationAdd.setRank(kp.getRank()); //later revised
+//						annotationAdd.setStem("ADD");
+//						annotationAdd.setBegin(matcher.start(2));  //SPnew
+//						annotationAdd.setEnd(matcher.end(2));
+//						annotationAdd.setLanguage(LANGUAGE);
+//						listKeyPhraseAnnotation.add(annotationAdd);
+//						if (printZw) {System.out.println("EVAL_MODE ENRICH");}
+//					}
+				
+				
 				annotation.setProbability(kp.getProbability());
 				annotation.setStem(kp.getStemmed());
 				//hits if replacee follows replaced (i.e. is shorter
 				
 				annotation.setRank(kp.getRank()); //later revised
+				annotation.setRankGroup(kp.getRank());
 				
 				annotation.setBegin(matcher.start(2));  //SPnew
 				annotation.setEnd(matcher.end(2)); 
@@ -1319,51 +1759,18 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 				
 				annotation.setLanguage(LANGUAGE);
 				listKeyPhraseAnnotation.add(annotation);
-//				annotation.addToIndexes(); //later
+
+
+//					annotation.addToIndexes(); //later
 				
 			}//end Matcher.find
-			
-			
-			
-			
-			
-			
-			
-			
-			
 		} //for kp
 		
 
 		
 		
 		
-//		for (int i = 0; i < listKeyPhraseAnnotation.size(); i++) {
-//	        	KeyPhraseAnnotation keyPhraseAnnotation = listKeyPhraseAnnotation.get(i);
-//	        	if (kpReRank.containsKey(keyPhraseAnnotation.getCoveredText().toLowerCase())){
-//	        		
-////	        		System.out.println("RERANKED ANNO " + 
-////	        		keyPhraseAnnotation.getCoveredText().toLowerCase() 
-////	        				+ " " + keyPhraseAnnotation.getRank() + ":" 
-////	        				+ kpReRank.get(keyPhraseAnnotation.getCoveredText().toLowerCase()));
-//	        		keyPhraseAnnotation.setRank(kpReRank.get(keyPhraseAnnotation.getCoveredText().toLowerCase()));
-////	        		System.out.println ("FINAL RANK " + keyPhraseAnnotation.getRank());
-//	        	}
-//	        	
-//	        	if (kpReplaceReRank.containsKey(keyPhraseAnnotation.getCoveredText())){
-//	        		keyPhraseAnnotation.setRank(kpReplaceReRank.get(keyPhraseAnnotation.getCoveredText()));
-////					System.out.println("REPRERANK ANNO" + keyPhraseAnnotation.getCoveredText()
-////					+ " " + keyPhraseAnnotation.getRank() + ":" 
-////    				+ kpReplaceReRank.get(keyPhraseAnnotation.getCoveredText().toLowerCase())
-////							);
-//				}
-//				
-//	        	
-////	        	keyPhraseAnnotation.getRank();
-////	        	keyPhraseAnnotation.addToIndexes();
-//			
-//		}
-		
-//		ArrayList<KeyPhrase> keyPhrasesByRank = new ArrayList<KeyPhrase> (keyPhrases);
+
 	
 		boolean byRank = false;
 		
@@ -1371,7 +1778,8 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 		byRank = true;
 
 		
-		
+//		if (EXTEND_KEYPHRASE_TO_CHUNK == false) //don't activate,  blocks addToIndexes
+//			return;
 		
 		if (byRank){
 			Collections.sort(listKeyPhraseAnnotation, new KeyPhraseAnnotationByRankLengthComparator());
@@ -1383,91 +1791,74 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 		int finalRank = -1;
 		int i;
 		i = -1;
-//		for (KeyPhraseAnnotation kpa : listKeyPhraseAnnotation) {
-////			System.out.println("FINAL RANK ");
-////        	 kpa = listKeyPhraseAnnotation.get(i);
-//        	if (!kpa.getCoveredText().toLowerCase().equals(oldText)){
-////        		System.out.println("OLDTEXT " + oldText + "!=" + kpa.getCoveredText().toLowerCase()); 
-////        	i++;
-//        	oldText = kpa.getCoveredText().toLowerCase();
-//        	
-//        	}
-//        	
-////        	kpa.setRank(i); //SP uncomment 
-////        	oldRank = kpa.getRank();
-//        	
-//        	
-//		}
+
 //		MAX_NUMBER_OF_KEYPHRASES = 10; //SP global parameter
 		int keyphraseCount =0;
 		HashSet <String> kpText = new HashSet<>();
+		String kpOri = null;
+		int countChunkKpPerKp = 0;
 		KPA: for (KeyPhraseAnnotation kpa : listKeyPhraseAnnotation) {
-//			System.out.println("KPA TYPE " + kpa.getType().getShortName());
-			if (
+			
+//			System.out.println("KPA TYPE " + kpa.getType().getShortName() + " " + kpa.getCoveredText() + "RANK:" + kpa.getRank());
+			if (kpa.getType().getShortName().equals("KeyPhraseAnnotationDeprecated")) {
+				kpa.addToIndexes();
+//				System.out.println("KPA TYPE " + kpa.getType().getShortName() + " " + kpa.getCoveredText());
+			}
+			else if (
 					(kpa.getType().getShortName().equals("KeyPhraseAnnotation") 
 						||	kpa.getType().getShortName().equals("KeyPhraseAnnotationReplaced") 
 						||	kpa.getType().getShortName().equals("KeyPhraseAnnotationEnriched") 
 							)){
 				String [] kpaParts = kpa.getCoveredText().split(" ");
+
 				
-//				MAX KEY pay federal income taxes:1 2 2
-//				MAX KEY federal income taxes:1 2 3
-//				MAX KEY income taxes:1 2 4
-//				MAX KEY taxes:1 2 5
+				if (kpa.getType().getShortName().equals("KeyPhraseAnnotationReplaced") 
+						||	kpa.getType().getShortName().equals("KeyPhraseAnnotationEnriched") 
+							)
+//				System.out.println("REPENRICH FOUND" + kpa.getKeyPhrase());
 				
-//				if (kpaParts.length>1){
-//				 for (String previousKp : kpText) {
-////						System.out.println("KPCompare " + kp.getUnstemmed().toLowerCase() + 
-////								":" + kp.getRank() +
-////								"::" + other2.getUnstemmed().toLowerCase()+ 
-////								":" + other2.getRank());
-//					String patternKpaString = String.format("(\\b)(%s)(\\b)", kpa.getCoveredText().toLowerCase());
-//					Pattern patternKpa = Pattern.compile(patternKpaString);
-//					Matcher matcherKpa = patternKpa.matcher(
-//							previousKp);
-////					matcherOther.find()
-////						if (kp.getUnstemmed().toLowerCase().contains(other2.getUnstemmed().toLowerCase()) 
-//						if (	matcherKpa.find() 
-//								&&	!previousKp.equalsIgnoreCase(kpa.getCoveredText().toLowerCase())){
-//							System.out.println("SUBSTRING" + kpa.getCoveredText().toLowerCase());
-//							continue KPA;
-//						}
-//				 }
-//				}
-								
-				
-				
+				if (EXTEND_KEYPHRASE_TO_CHUNK == false && DBPEDIA_FILTER
+						&& dbpediaCoveredText.contains(kpa.getCoveredText().toLowerCase().trim())){
+//					System.out.println("DBPEDIA FILTER NO CHUNK " + kpa.getCoveredText().toLowerCase());
+					continue KPA; //no addToIndexes
+			 	}
 				
 				 	kpa.addToIndexes();
+				 	
+				 	
+				 	
+
+				 	
+				 	if (EXTEND_KEYPHRASE_TO_CHUNK == false){
+				 		continue KPA;
+				 	}
 				 	int kpBeginNew  = kpa.getBegin();
 					int kpEndNew = kpa.getEnd();
 					int kpRankNew = kpa.getRank();
+					int kpGroup = kpa.getRank();
 					
-					
+					Integer kpGroupInteger = new Integer(kpGroup);
+							
 					kpBeginEndNew = "" + kpBeginNew + "-" + kpEndNew;
 					String kpKeyPhraseNew = kpa.getKeyPhrase();
-					//case-normalised kp fracking rank:2 and normal kp fracking rank:4 
-					//does not occur because stem determines kp
-//					if (keyPhraseToRank.containsKey(kpKeyPhraseNew)){
-//						kpRankNew = keyPhraseToRank.get(kpKeyPhraseNew);
-//					}
-//					else {
-//					keyPhraseToRank.put(kpKeyPhraseNew, kpRankNew);
-//					}
 
-//					System.out.println("KP" + kpKeyPhraseNew + 
-//							"RANK " + kpRankNew);
-//					System.out.println("OFFSETS " + kpa.getBegin() + "-" + kpa.getEnd());
 					
 					
-					if (EXTEND_KEYPHRASE_TO_CHUNK){	
+					if (EXTEND_KEYPHRASE_TO_CHUNK){	//not needed
 						kpBeginNew = -1;
 						kpEndNew = -1;
 						kpKeyPhraseNew = "";
+						kpOri = kpa.getCoveredText();
+//						System.out.println("KP BEFORE CHUNK EXTENSION" + kpa.getCoveredText());
 						
-//						System.out.println("KP " + kpa.getCoveredText());
+						
+						
 						List <Chunk> chunks = JCasUtil.selectCovering(aJCas,
 								Chunk.class, kpa);
+						
+						List <Chunk> precedingChunks = JCasUtil.selectPreceding(aJCas, Chunk.class, kpa,2);
+						
+						List <Chunk> followingChunks = JCasUtil.selectFollowing(aJCas, Chunk.class, kpa,2);
 						
 						if (chunks.size()==0){
 							//Unattended garbage piled
@@ -1476,8 +1867,31 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 						continue KPA;
 						}
 						
+						
+						
+						if(incompleteNerFilter || kpEqualsNerFilter){
+						
+						
+//						Iterator it = replaceEnrich.entrySet().iterator();
+//					    while (it.hasNext()) {
+//					        Map.Entry pair = (Map.Entry)it.next();
+//					        System.out.println("REPEN" + pair.getKey() + " = " + pair.getValue());
+//					        it.remove(); // avoids a ConcurrentModificationException
+//					    }
+					    
+						if (replaceEnrich.containsKey(kpa.getCoveredText()) 
+								&& namedEntitiesCoveredText.contains(replaceEnrich.get(kpa.getCoveredText().toLowerCase()))){
+//										System.out.println("IGNORE REPLACED NER " + kpa.getCoveredText() + ":" + replaceEnrich.get(kpa.getCoveredText()));
+										kpa.removeFromIndexes();
+										continue KPA;
+									
+						}
+						}
+						
 						for (Chunk aChunk : chunks) {
 							
+						  if(incompleteNerFilter || kpEqualsNerFilter){
+
 							for (Person person : namedPersonsList){
 								if (aChunk.getChunkValue()!=null && aChunk.getCoveredText().contains(person.getCoveredText())){
 //									System.out.println("IGNORE PER " + kpa.getCoveredText() + ":" + aChunk.getCoveredText());
@@ -1485,7 +1899,21 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 									continue KPA;
 								}
 							}
-							
+						  }
+						  
+						  
+						  if (aChunk.getChunkValue()!=null && (aChunk.getCoveredText().contains("http:") 
+								  || aChunk.getCoveredText().contains("https:") 
+								  || aChunk.getCoveredText().contains("www."))){
+//							  System.out.println("IGNORE WEB ADDRESS " + kpa.getCoveredText() + ":" + aChunk.getCoveredText());
+							  kpa.removeFromIndexes();
+								continue KPA;
+						  }
+						 
+						  
+						 
+						 
+						  
 							
 //							System.out.println("KP " + kpa.getCoveredText());
 //							System.out.println("CHUNK " + aChunk.getCoveredText() + " " + 
@@ -1496,6 +1924,7 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 								//TO DO: get subsequent PP NP
 								//travelling across the mediterranean sea
 								//concerned about fracking
+//								 System.out.println("IGNORED VP " + kpa.getCoveredText());
 								kpBeginNew = kpa.getBegin();
 								kpEndNew = kpa.getEnd();
 								kpKeyPhraseNew = kpa.getCoveredText();
@@ -1504,7 +1933,7 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 								continue KPA;
 							 }
 							 else {
-								 System.out.println("IGNORED VP " + kpa.getCoveredText());
+//								 System.out.println("IGNORED VP " + kpa.getCoveredText());
 								 kpa.removeFromIndexes();
 									continue KPA;
 							 }
@@ -1512,9 +1941,7 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 							else if (aChunk.getChunkValue()!=null
 							&& aChunk.getChunkValue().toString().equals("NP")){
 							kpKeyPhraseNew = aChunk.getCoveredText();
-//							kpBeginNew = -1;
-//							kpEndNew = -1;
-//							kpRankNew = kpa.getRank();
+							
 							List<Token> tokens= JCasUtil.selectCovered(aJCas,
 									Token.class, aChunk);
 							
@@ -1535,7 +1962,9 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 									}
 									//delete STOPWORDS at beginning of phrase
 									else if (aToken.getCoveredText() != null
-											&& ke.getStopwords().isStopword(aToken.getCoveredText())
+											&& (ke.getStopwords().isStopword(aToken.getCoveredText().toLowerCase())
+											|| skipAsInitialToken.contains(aToken.getCoveredText().toLowerCase())	
+										    )
 											){
 //									System.out.println("STOPWORD BEG " + aToken.getCoveredText() + " " + 
 //											+ aToken.getBegin() + "-" + aToken.getEnd());
@@ -1561,24 +1990,28 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 								}
 							
 							
-							while (kpKeyPhraseNew.startsWith(" ")){
+							while (kpKeyPhraseNew.startsWith(" ") || kpKeyPhraseNew.startsWith("*")){
 								kpKeyPhraseNew = kpKeyPhraseNew.substring(1);
 //								System.out.println("BLANKWEG" + kpKeyPhraseNew);
 							}
-							//SPNEW 
+							boolean endModified = false;
 			TOKBACKWARDS:		for (i = tokens.size() - 1; i >= 0; i--) {
-								while (kpKeyPhraseNew.endsWith(" ")){
+								while (kpKeyPhraseNew.endsWith(" ") || kpKeyPhraseNew.endsWith("*")
+										|| kpKeyPhraseNew.endsWith("'")){
 									kpKeyPhraseNew = kpKeyPhraseNew.substring(0,kpKeyPhraseNew.length()-1);
 //									System.out.println("FINAL BLANKWEG" + kpKeyPhraseNew);
 								}
 							    if (tokens.get(i).getPos().getPosValue().toString() != null
-										&& skipAsFinalPosTag.contains(tokens.get(i).getPos().getPosValue().toString())
+										&& (skipAsFinalPosTag.contains(tokens.get(i).getPos().getPosValue().toString())
+										|| skipAsInitialToken.contains(tokens.get(i).getCoveredText())
+												)
 										){
 //								System.out.println("MORPH END " + tokens.get(i).getCoveredText()  
 //										+ tokens.get(i).getCoveredText().length());
 							    	int tokenlength = tokens.get(i).getCoveredText().length();
 							    	if (kpKeyPhraseNew.length() - tokenlength - 1 > 0){
 								kpKeyPhraseNew = kpKeyPhraseNew.substring(0, kpKeyPhraseNew.length() - tokenlength);
+								endModified = true;
 							    	}
 							    	else {
 //							    		System.out.println("IGNORE STRANGE " + kpKeyPhraseNew);
@@ -1596,7 +2029,8 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 								}
 							    
 							 }
-							while (kpKeyPhraseNew.endsWith(" ")){
+							
+							while (kpKeyPhraseNew.endsWith(" ")|| kpKeyPhraseNew.endsWith("*")){
 								kpKeyPhraseNew = kpKeyPhraseNew.substring(0,kpKeyPhraseNew.length()-1);
 //								System.out.println("FINAL BLANKWEG" + kpKeyPhraseNew);
 							}
@@ -1606,7 +2040,148 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 //							System.out.println("LAST " + lastToken.getCoveredText());
 							}
 							
-//							System.out.println("KPNEWCHUNK" + kpKeyPhraseNew + " " + kpRankNew);
+							
+							
+							
+//						    //activate PPs if NP is DBPedia entry	
+//							System.out.println("CHUNK" + kpKeyPhraseNew + " " + kpEndNew);
+							if (!endModified && EXTEND_TO_PP
+//									 && (( DBPEDIA_FILTER && dbpediaCoveredText.contains(kpKeyPhraseNew.toLowerCase()))
+//										   || true //NEW
+//									       || kpRankNew > 5 
+//									       || kpKeyPhraseNew.split(" ").length == 1
+//									       || dbpediaCoveredText.contains(kpOri.toLowerCase())
+//									      
+//											 )
+//									
+									){
+//										System.out.println("NOTENDMODIFIED:" + kpKeyPhraseNew + kpEndNew);
+										
+									
+							
+                            	if (followingChunks.size() == 2 && 
+                            			followingChunks.get(0).getChunkValue().toString().equals("PP")
+                            			&& followingChunks.get(1).getChunkValue().toString().equals("NP")
+                            			&& followingChunks.get(0).getBegin() == kpEndNew + 1 //energy. After
+                            			){
+                            		String postnominalPp = followingChunks.get(1).getCoveredText();
+                            		String postnominalPrep = followingChunks.get(0).getCoveredText();
+//                            		System.out.println("PREP" + postnominalPrep);
+//                            		System.out.println("PPFULL" + kpKeyPhraseNew + " " + postnominalPrep + " "+ postnominalPp);	
+                            		String[] newNpSplit = postnominalPp.split(" ");
+                            		
+            						boolean ppOk = true;
+
+//            						if (skipAsPreposition.contains(postnominalPrep)){
+            						if (!postnominalPreposition.contains(postnominalPrep)){
+            							ppOk = false;
+//            							System.out.println("BLOCKEDPREP" + postnominalPrep);
+//            							System.out.println("PPFULL" + kpKeyPhraseNew + " " + postnominalPrep + " "+ postnominalPp);	
+            						}
+            						if (newNpSplit != null) {
+//            							for (i = newNpSplit.length - 1; i >= 0; i--) {
+            							if (newNpSplit[0].equals("the") || newNpSplit[0].equals("a") || newNpSplit[0].equals("an")){
+//            								System.out.println("STOPWORD THE OK" + kpKeyPhraseNew + " " + postnominalPrep + " "+ postnominalPp);		
+            			
+            							}
+            							else if (ke.getStopwords().isStopword(newNpSplit[0].toLowerCase())
+            									){
+            								ppOk = false;
+//            								System.out.println("IGNORE STOPWORD " + kpKeyPhraseNew + " " + postnominalPrep + " "+ postnominalPp);		
+            							}
+            							if (
+           									 ke.getStopwords().isStopword(newNpSplit[newNpSplit.length-1].toLowerCase())
+           									){
+           								ppOk = false;
+//           								System.out.println("IGNORE STOPWORD " + kpKeyPhraseNew + " " + postnominalPrep + " "+ postnominalPp);		
+           							}
+//            							xxx
+//            						}
+            						}
+            						//NEW
+//            						if (dbpediaCoveredText.contains(postnominalPp)){
+//            							ppOk = false;
+////            							System.out.println("DBPEDIA in PP" + postnominalPp);
+//            						}
+//            						System.out.println("UPPER CASE PREP CHECK" + postnominalPrep.charAt(0) + "XX"+ postnominalPrep);
+            						if (Character.isUpperCase(postnominalPrep.charAt(0))){ //Europe In Germany
+            							ppOk = false; 
+//            							System.out.println("UPPER CASE PREP" + postnominalPrep);
+            						}
+            						   
+            				NER:		for (NamedEntity ner: namedEntitiesList){
+//            							int nerBegin = ner.getBegin();
+//            					        int nerEnd = ner.getEnd();
+            					        String nerText = ner.getCoveredText().toLowerCase();
+//            					        System.out.println("NER" + nerText);
+            					        if (nerText.equalsIgnoreCase(kpKeyPhraseNew)
+            					        	|| 	nerText.equalsIgnoreCase(postnominalPp)
+            					        	|| nerText.equalsIgnoreCase(kpOri)
+            					        	|| postnominalPp.toLowerCase().contains(nerText) //NEW
+            					        		){
+            					        	ppOk = false;
+//                							System.out.println("NER in PP" + kpKeyPhraseNew + " " + postnominalPrep + " "+ postnominalPp);
+            					            break NER;
+            					        }         					 
+            						}
+            						
+            						
+            						
+            						
+            						
+            						
+//            						if (kpText.contains(postnominalPp)){
+//            							System.out.println("PP is KP " + postnominalPp);	
+//            							ppOk = true;
+//            						}
+            						
+            						
+            						if (ppOk){
+//            							System.out.println("KPBEFORE" + kpKeyPhraseNew + kpEndNew);
+            							kpKeyPhraseNew = kpKeyPhraseNew + " " + postnominalPrep + " " + postnominalPp;
+            							kpEndNew = followingChunks.get(1).getEnd();
+//            							System.out.println("PPAFTERCHUNK" + kpKeyPhraseNew + " " + kpEndNew);
+        							}
+                            		
+                            		
+//                            		System.out.println("KPAFTERCHUNK" + kpKeyPhraseNew + " " + kpEndNew);
+                            		 
+                            	}
+                            	
+                            	//precedingChunk often fill words like result of ..
+//                            	if (precedingChunks.size() == 2 && precedingChunks.get(1).getChunkValue().toString().equals("PP")
+//                            			&& precedingChunks.get(0).getChunkValue().toString().equals("NP")
+//                            			){
+//                            		System.out.println("KPBEFORECHUNK"  + "NP" + precedingChunks.get(0).getCoveredText()
+//                            				+ "PP" + precedingChunks.get(1).getCoveredText() + "KEA" + kpKeyPhraseNew);
+//                            		 
+//                            	}
+							}
+							
+							//remove: war ** History
+							Pattern p = Pattern.compile("\\*\\*");
+							Matcher m = p.matcher(kpKeyPhraseNew);
+							if (m.find()){
+								kpa.removeFromIndexes();
+								continue KPA;
+							}
+							p = Pattern.compile("_");
+							m = p.matcher(kpKeyPhraseNew);
+							if (m.find()){
+								kpa.removeFromIndexes();
+								continue KPA;
+							}
+							p = Pattern.compile("\"");
+							m = p.matcher(kpKeyPhraseNew);
+							if (m.find()){
+								kpa.removeFromIndexes();
+								continue KPA;
+							}
+							
+							
+							
+							
+//							System.out.println("KPNEWCHUNK" + kpKeyPhraseNew + " " + kpEndNew);
 							
 							} //NEW NP
 							else {
@@ -1620,14 +2195,34 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 						String[] kpaSplit = kpKeyPhraseNew.split(" ");
 						
 						if (kpaSplit != null && kpaSplit.length > 1) {
-							if (ke.getStopwords().isStopword(kpaSplit[0])
-									|| ke.getStopwords().isStopword(kpaSplit[kpaSplit.length-1])
+							if (ke.getStopwords().isStopword(kpaSplit[0].toLowerCase())
+									|| ke.getStopwords().isStopword(kpaSplit[kpaSplit.length-1].toLowerCase())
 									){
 //								System.out.println("IGNORE STOPWORD " + kpKeyPhraseNew);
 								kpa.removeFromIndexes();
 								continue KPA;
 							}
 						}
+						
+//						if (LOAD_MANUAL_KEYPHRASES && manualKeyPhrases.contains(kpa.getCoveredText().toLowerCase())){
+////							System.out.println("KPORIMANUAL" + kpa.getCoveredText());
+//						kpa.addToIndexes(); //better, but CAUTION: does not recalculate rank
+//						//shows potential but not licit technique
+//						}
+//						if (LOAD_MANUAL_KEYPHRASES &&
+//								!kpa.getCoveredText().toLowerCase().equals(kpKeyPhraseNew.toLowerCase())){	
+//							//shows potential but not licit technique
+////							System.out.println("KPNEWCHUNK" + kpKeyPhraseNew);
+//							if (manualKeyPhrases.contains(kpKeyPhraseNew.toLowerCase())){
+////								System.out.println("KPMANUALCHUNK" + kpKeyPhraseNew);
+//							}
+//							else {
+////								System.out.println("KPIGNORECHUNK" + kpKeyPhraseNew);
+//								kpa.removeFromIndexes();
+//								continue KPA;
+//							}
+//							}
+						
 						//Fracking -> fracking
 						if (upCapTolowCap.containsKey(kpKeyPhraseNew)){
 							kpKeyPhraseNew =upCapTolowCap.get(kpKeyPhraseNew);
@@ -1636,6 +2231,67 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 						
 					} // EXTENDKEYPHRASETOCHUNK
 					
+					
+					if (DBPEDIA_FILTER
+							&& dbpediaCoveredText.contains(kpKeyPhraseNew.toLowerCase().trim())){
+//								System.out.println("DBPEDIA FILTER:" + kpKeyPhraseNew.toLowerCase() + "RANK" + kpa.getRank());
+								kpa.removeFromIndexes();
+								continue KPA;
+							}
+					else if (standaloneStopwordFilter && standaloneStopWordSet.contains(kpKeyPhraseNew)){
+//						System.out.println("STANDALONE STOPWORD " + kpKeyPhraseNew);
+						kpa.removeFromIndexes();
+						continue KPA;
+					}
+					else if (kpKeyPhraseNew.trim().split("\\s+").length > MAX_NUMBER_OF_WORDS_IN_KEYPHRASE){
+//						System.out.println("TOO MANY WORDS IN KP " + MAX_NUMBER_OF_WORDS_IN_KEYPHRASE + kpKeyPhraseNew);
+						kpa.removeFromIndexes();
+						continue KPA;
+					}
+					else if (kpKeyPhraseNew.trim().split("\\s+").length < MIN_NUMBER_OF_WORDS_IN_KEYPHRASE){
+//						System.out.println("TOO FEW WORDS IN KP " + MIN_NUMBER_OF_WORDS_IN_KEYPHRASE + kpKeyPhraseNew);
+						kpa.removeFromIndexes();
+						continue KPA;
+					}
+					else if (rankGroupFound.contains(kpGroupInteger)){
+//						System.out.println("RANKGROUP ALREADY " + kpKeyPhraseNew);
+						kpa.removeFromIndexes();
+						continue KPA;
+					}
+					else {
+						for (String txt: kpText){
+							if (txt.equalsIgnoreCase(kpKeyPhraseNew)){
+								
+							}
+							else if (txt.contains(kpKeyPhraseNew.toLowerCase())){
+//								System.out.println("SUBSTRING OF EXISTING " + kpKeyPhraseNew + "IN:" + txt);
+								kpa.removeFromIndexes();
+								continue KPA;
+								
+							}
+							else if (kpKeyPhraseNew.toLowerCase().contains(txt)){
+//								System.out.println("EXISTING CONTAINS ACTUAL" + txt + "IN:" + kpKeyPhraseNew);
+								kpa.removeFromIndexes();
+								continue KPA;
+							}
+							else if (kpKeyPhraseNew.endsWith("y")){
+								if (txt.contains(kpKeyPhraseNew.substring(0,kpKeyPhraseNew.length()-1).toLowerCase())){
+//									System.out.println("SUBSTRING OF EXISTING " + kpKeyPhraseNew + "IN:" + txt);
+									kpa.removeFromIndexes();
+									continue KPA;
+									
+								}
+								else if (txt.endsWith("y")){
+									if (kpKeyPhraseNew.toLowerCase().contains(txt.substring(0,txt.length()-1))){
+//										System.out.println("EXISTING CONTAINS ACTUAL" + txt + "IN:" + kpKeyPhraseNew);
+										kpa.removeFromIndexes();
+										continue KPA;
+									}
+								}
+							}
+						}
+					}
+					
 							if (kpBeginNew != -1 && kpEndNew != -1){
 								kpa.removeFromIndexes();
 								kpBeginEndNew = "" + kpBeginNew + "-" + kpEndNew;
@@ -1643,6 +2299,13 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 //									System.out.println("ANNO DOUBLE " +kpKeyPhraseNew);
 									continue KPA;
 								}
+								
+								if (!kpKeyPhraseNew.equalsIgnoreCase(kpOri)){
+//									System.out.println("ANNO IDENT " +kpKeyPhraseNew);
+									countChunkKpPerKp++;
+									
+								}
+
 								
 								if (kpRankNew == oldRank){
 									addToRank = addToRank + 1;
@@ -1661,18 +2324,23 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 									
 										}
 								}
-								else if (standaloneStopwordFilter && standaloneStopWordSet.contains(kpKeyPhraseNew)){
+//								else if (standaloneStopwordFilter && standaloneStopWordSet.contains(kpKeyPhraseNew)){
 //									System.out.println("STANDALONE STOPWORD " + kpKeyPhraseNew);
-									continue KPA;
-								}
-								else if (keyphraseCount < MAX_NUMBER_OF_KEYPHRASES){
+//									continue KPA;
+//								}
+//								else if (kpKeyPhraseNew.trim().split("\\s+").length > MAX_NUMBER_OF_WORDS_IN_KEYPHRASE){
+//									System.out.println("TOO MANY WORDS IN KP " + MAX_NUMBER_OF_WORDS_IN_KEYPHRASE + kpKeyPhraseNew);
+//									continue KPA;
+//								}
+								else if (keyphraseCount <= MAX_NUMBER_OF_KEYPHRASES){
 									kpText.add(kpKeyPhraseNew.toLowerCase());
 									kpChunkBasedRank.put(kpKeyPhraseNew.toLowerCase(), finalRank);
 									keyphraseCount++;
+									rankGroupFound.add(kpGroupInteger);
 								}
-								else if (keyphraseCount >= MAX_NUMBER_OF_KEYPHRASES){
+								else if (keyphraseCount > MAX_NUMBER_OF_KEYPHRASES){
 //									System.out.println("MAX REACHED NEW NOT ADDED " + kpKeyPhraseNew);
-									continue KPA;
+									break KPA;
 								}
 								
 								
@@ -1681,21 +2349,125 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 								kpa.setBegin(kpBeginNew);
 								kpa.setEnd(kpEndNew);
 								kpa.setRank(finalRank);
+								
+								kpa.setRankGroup(kpGroup);
 								kpBeginEndNew = "" + kpBeginNew + "-" + kpEndNew;
 								kpChunkBasedBeginEnd.add(kpBeginEndNew);
 								
-//								System.out.println("KPCHUNK" + kpKeyPhraseNew + 
-//										"RANK:COUNT " + finalRank + ":" + keyphraseCount);
+//								System.out.println("KPFINAL" + kpKeyPhraseNew + 
+//										"RANK:COUNT:END " + finalRank + ":" + keyphraseCount + ":" + kpEndNew);
 //								System.out.println("OFFSETS " + kpa.getBegin() + "-" + kpa.getEnd());
 								kpa.addToIndexes();
 							}
 			} 
-		}
+		}//end KPA:
+		
+		
 		
 		
 		
 		
 	}
+	
+	final class DeterminePosResult {
+	    private final HashMap<String,Integer> first;
+	    private final HashSet<String> second;
+	    private final HashMap<String,String> third;
+	    public DeterminePosResult( HashMap<String,Integer> first, HashSet<String> second, HashMap<String,String> third) {
+	        this.first = first;
+	        this.second = second;
+	        this.third = third;
+	    }
+
+	    public  HashMap<String,Integer> getPosSequenceCount() {
+	        return first;
+	    }
+
+	    public HashSet<String> getKeyFound() {
+	        return second;
+	    }
+	    
+	    public  HashMap<String,String> getKeyPos() {
+	        return third;
+	    }
+	}
+	
+
+	public DeterminePosResult determinePos (List<Token> tokens, HashSet<String> keyPhrases, JCas aJCas, 
+			HashMap<String,Integer> posSequenceCount, HashSet<String>  keyFound, HashMap<String,String> keyPos){
+//		HashSet<String>  manualKeyFound = new HashSet<String>();
+//		HashMap<String,Integer> posSequenceCount = new HashMap<String,Integer>();
+//		HashMap<String,String> keyPos = new HashMap<String,String>();
+		
+		TOK:		for (Token aToken : tokens){
+//			System.out.println("TOKEN FOUND1" + aToken.getCoveredText()); 
+				for (String keyPhrase : keyPhrases){
+//					System.out.println("MK" + manualKeyPhrase);
+					String [] wordsInKeyphrase = keyPhrase.split("\\s+"); 
+					int lengthOfKeyphrase = wordsInKeyphrase.length;
+					String [] pos = new String [lengthOfKeyphrase];
+					boolean successful = false;
+					
+					if (wordsInKeyphrase[0].equals(aToken.getCoveredText().toLowerCase())){
+//						System.out.println("EQUAL TOKEN" + aToken.getCoveredText() + "POS" + aToken.getPos().getPosValue().toString() + " MK" + manualKeyPhrase);
+						
+						if (aToken.getPos().getPosValue().toString() != null){
+						pos[0] = aToken.getPos().getPosValue().toString();
+						}
+						
+						String [] wordsTextualKeyphrase = new String [lengthOfKeyphrase];
+						wordsTextualKeyphrase[0] = aToken.getCoveredText().toLowerCase();
+						if (lengthOfKeyphrase == 1){
+							successful = true;
+						}
+						else if (lengthOfKeyphrase > 1){
+						List<Token> tokensKey = JCasUtil.selectFollowing(aJCas, Token.class, aToken, lengthOfKeyphrase-1);
+					    if (tokensKey != null){
+					    	int i = 1;
+						for (Token tokenKey: tokensKey){
+							if (aToken.getPos().getPosValue().toString() != null && 
+									!aToken.getPos().getPosValue().toString().equals(";")){ //semicolon is separator in StringBuilder value
+							pos[i] = tokenKey.getPos().getPosValue().toString();
+							
+							wordsTextualKeyphrase[i] = tokenKey.getCoveredText().toLowerCase();
+							}
+							i++;
+//					    	System.out.println("SINGLE TOK" + tokenManKey.getCoveredText());
+//					    	System.out.println("SINGLE POS" + tokenManKey.getPos().getPosValue().toString());
+					    }
+						
+					    }
+					}
+						if (wordsInKeyphrase != null && wordsTextualKeyphrase != null &&
+								Arrays.toString(wordsInKeyphrase).equals(Arrays.toString(wordsTextualKeyphrase))){
+							successful = true;
+//							System.out.println("SUCCESS" + Arrays.toString(pos));
+							String posString = Arrays.toString(pos);
+							String keyString = Arrays.toString(wordsTextualKeyphrase);
+							keyPos.put(keyString, posString);
+							
+							if (!keyFound.contains(keyString) && posSequenceCount.containsKey(posString)) {
+								int posCount = posSequenceCount.get(posString) + 1;
+//								System.out.println("ADD" + posString + posCount);
+				            posSequenceCount.put(posString,posCount);
+							}
+							else if (!keyFound.contains(keyString)){
+								 posSequenceCount.put(posString,1);
+//								 System.out.println("NOADD" + posString + 1);
+							}
+							keyFound.add(keyString);
+						}	
+						
+					}
+				}
+				}
+	return new DeterminePosResult(posSequenceCount, keyFound,keyPos);
+		}
+	
+	
+	
+	
+	
 
 	public KEAKeyphraseExtractor getKeyphraseExtractor() {
 		return ke;
@@ -1705,6 +2477,17 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 		this.ke = ke;
 	}
 
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
 	private class KeyPhraseComparator implements Comparator<KeyPhrase> {
 
 		@Override
@@ -1737,5 +2520,6 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 	}
 	
 	
+		
 	
 }

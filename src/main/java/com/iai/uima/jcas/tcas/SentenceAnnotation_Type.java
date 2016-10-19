@@ -9,10 +9,12 @@ import org.apache.uima.cas.impl.FSGenerator;
 import org.apache.uima.cas.FeatureStructure;
 import org.apache.uima.cas.impl.TypeImpl;
 import org.apache.uima.cas.Type;
+import org.apache.uima.cas.impl.FeatureImpl;
+import org.apache.uima.cas.Feature;
 import org.apache.uima.jcas.tcas.Annotation_Type;
 
 /** 
- * Updated by JCasGen Tue Jun 21 15:32:08 CEST 2016
+ * Updated by JCasGen Tue Oct 11 15:27:10 CEST 2016
  * @generated */
 public class SentenceAnnotation_Type extends Annotation_Type {
   /** @generated 

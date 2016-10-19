@@ -13,7 +13,7 @@ import org.apache.uima.jcas.tcas.Annotation;
 
 
 /** 
- * Updated by JCasGen Tue Jun 21 15:32:07 CEST 2016
+ * Updated by JCasGen Tue Oct 11 15:27:10 CEST 2016
  * XML source: D:/susanne/git/KEAAnnotator/src/main/resources/com/iai/uima/jcas/tcas/KeyPhraseTypeSystemDescriptor.xml
  * @generated */
 public class KeyPhraseAnnotation extends DocumentAnnotation {
@@ -162,6 +162,28 @@ public class KeyPhraseAnnotation extends DocumentAnnotation {
     if (KeyPhraseAnnotation_Type.featOkTst && ((KeyPhraseAnnotation_Type)jcasType).casFeat_Stem == null)
       jcasType.jcas.throwFeatMissing("Stem", "com.iai.uima.jcas.tcas.KeyPhraseAnnotation");
     jcasType.ll_cas.ll_setStringValue(addr, ((KeyPhraseAnnotation_Type)jcasType).casFeatCode_Stem, v);}    
+   
+    
+  //*--------------*
+  //* Feature: RankGroup
+
+  /** getter for RankGroup - gets 
+   * @generated
+   * @return value of the feature 
+   */
+  public int getRankGroup() {
+    if (KeyPhraseAnnotation_Type.featOkTst && ((KeyPhraseAnnotation_Type)jcasType).casFeat_RankGroup == null)
+      jcasType.jcas.throwFeatMissing("RankGroup", "com.iai.uima.jcas.tcas.KeyPhraseAnnotation");
+    return jcasType.ll_cas.ll_getIntValue(addr, ((KeyPhraseAnnotation_Type)jcasType).casFeatCode_RankGroup);}
+    
+  /** setter for RankGroup - sets  
+   * @generated
+   * @param v value to set into the feature 
+   */
+  public void setRankGroup(int v) {
+    if (KeyPhraseAnnotation_Type.featOkTst && ((KeyPhraseAnnotation_Type)jcasType).casFeat_RankGroup == null)
+      jcasType.jcas.throwFeatMissing("RankGroup", "com.iai.uima.jcas.tcas.KeyPhraseAnnotation");
+    jcasType.ll_cas.ll_setIntValue(addr, ((KeyPhraseAnnotation_Type)jcasType).casFeatCode_RankGroup, v);}    
   }
 
     

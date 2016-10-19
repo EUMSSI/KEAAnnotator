@@ -10,7 +10,7 @@ import org.apache.uima.jcas.cas.TOP_Type;
 
 
 /** 
- * Updated by JCasGen Tue Jun 21 15:32:07 CEST 2016
+ * Updated by JCasGen Tue Oct 11 15:27:10 CEST 2016
  * XML source: D:/susanne/git/KEAAnnotator/src/main/resources/com/iai/uima/jcas/tcas/KeyPhraseTypeSystemDescriptor.xml
  * @generated */
 public class KeyPhraseAnnotationDeprecated extends KeyPhraseAnnotation {
@@ -227,6 +227,28 @@ public class KeyPhraseAnnotationDeprecated extends KeyPhraseAnnotation {
     if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_equalsNer == null)
       jcasType.jcas.throwFeatMissing("equalsNer", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
     jcasType.ll_cas.ll_setBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_equalsNer, v);}    
+   
+    
+  //*--------------*
+  //* Feature: posFilter
+
+  /** getter for posFilter - gets 
+   * @generated
+   * @return value of the feature 
+   */
+  public boolean getPosFilter() {
+    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_posFilter == null)
+      jcasType.jcas.throwFeatMissing("posFilter", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    return jcasType.ll_cas.ll_getBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_posFilter);}
+    
+  /** setter for posFilter - sets  
+   * @generated
+   * @param v value to set into the feature 
+   */
+  public void setPosFilter(boolean v) {
+    if (KeyPhraseAnnotationDeprecated_Type.featOkTst && ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeat_posFilter == null)
+      jcasType.jcas.throwFeatMissing("posFilter", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    jcasType.ll_cas.ll_setBooleanValue(addr, ((KeyPhraseAnnotationDeprecated_Type)jcasType).casFeatCode_posFilter, v);}    
   }
 
     

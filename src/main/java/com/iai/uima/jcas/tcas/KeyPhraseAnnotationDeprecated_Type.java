@@ -13,7 +13,7 @@ import org.apache.uima.cas.impl.FeatureImpl;
 import org.apache.uima.cas.Feature;
 
 /** 
- * Updated by JCasGen Tue Jun 21 15:32:07 CEST 2016
+ * Updated by JCasGen Tue Oct 11 15:27:10 CEST 2016
  * @generated */
 public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type {
   /** @generated 
@@ -212,6 +212,30 @@ public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type
     ll_cas.ll_setBooleanValue(addr, casFeatCode_equalsNer, v);}
     
   
+ 
+  /** @generated */
+  final Feature casFeat_posFilter;
+  /** @generated */
+  final int     casFeatCode_posFilter;
+  /** @generated
+   * @param addr low level Feature Structure reference
+   * @return the feature value 
+   */ 
+  public boolean getPosFilter(int addr) {
+        if (featOkTst && casFeat_posFilter == null)
+      jcas.throwFeatMissing("posFilter", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    return ll_cas.ll_getBooleanValue(addr, casFeatCode_posFilter);
+  }
+  /** @generated
+   * @param addr low level Feature Structure reference
+   * @param v value to set 
+   */    
+  public void setPosFilter(int addr, boolean v) {
+        if (featOkTst && casFeat_posFilter == null)
+      jcas.throwFeatMissing("posFilter", "com.iai.uima.jcas.tcas.KeyPhraseAnnotationDeprecated");
+    ll_cas.ll_setBooleanValue(addr, casFeatCode_posFilter, v);}
+    
+  
 
 
 
@@ -251,6 +275,10 @@ public class KeyPhraseAnnotationDeprecated_Type extends KeyPhraseAnnotation_Type
  
     casFeat_equalsNer = jcas.getRequiredFeatureDE(casType, "equalsNer", "uima.cas.Boolean", featOkTst);
     casFeatCode_equalsNer  = (null == casFeat_equalsNer) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_equalsNer).getCode();
+
+ 
+    casFeat_posFilter = jcas.getRequiredFeatureDE(casType, "posFilter", "uima.cas.Boolean", featOkTst);
+    casFeatCode_posFilter  = (null == casFeat_posFilter) ? JCas.INVALID_FEATURE_CODE : ((FeatureImpl)casFeat_posFilter).getCode();
 
   }
 }
