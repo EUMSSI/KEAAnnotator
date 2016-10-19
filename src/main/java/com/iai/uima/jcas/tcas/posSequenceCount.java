@@ -1,13 +1,12 @@
 
 
-/* First created by JCasGen Mon Jun 20 15:42:01 CEST 2016 */
+/* First created by JCasGen Wed Oct 19 18:06:05 CEST 2016 */
 package com.iai.uima.jcas.tcas;
 
 import org.apache.uima.jcas.JCas; 
 import org.apache.uima.jcas.JCasRegistry;
 import org.apache.uima.jcas.cas.TOP_Type;
 
-import org.apache.uima.jcas.cas.StringArray;
 import org.apache.uima.jcas.tcas.Annotation;
 
 
@@ -15,12 +14,12 @@ import org.apache.uima.jcas.tcas.Annotation;
  * Updated by JCasGen Wed Oct 19 18:06:05 CEST 2016
  * XML source: /home/jgrivolla/GitHub/EUMSSI-UIMA/KEAAnnotator/src/main/resources/com/iai/uima/jcas/tcas/KeyPhraseTypeSystemDescriptor.xml
  * @generated */
-public class SentenceAnnotation extends Annotation {
+public class posSequenceCount extends Annotation {
   /** @generated
    * @ordered 
    */
   @SuppressWarnings ("hiding")
-  public final static int typeIndexID = JCasRegistry.register(SentenceAnnotation.class);
+  public final static int typeIndexID = JCasRegistry.register(posSequenceCount.class);
   /** @generated
    * @ordered 
    */
@@ -34,14 +33,14 @@ public class SentenceAnnotation extends Annotation {
  
   /** Never called.  Disable default constructor
    * @generated */
-  protected SentenceAnnotation() {/* intentionally empty block */}
+  protected posSequenceCount() {/* intentionally empty block */}
     
   /** Internal - constructor used by generator 
    * @generated
    * @param addr low level Feature Structure reference
    * @param type the type of this Feature Structure 
    */
-  public SentenceAnnotation(int addr, TOP_Type type) {
+  public posSequenceCount(int addr, TOP_Type type) {
     super(addr, type);
     readObject();
   }
@@ -49,7 +48,7 @@ public class SentenceAnnotation extends Annotation {
   /** @generated
    * @param jcas JCas to which this Feature Structure belongs 
    */
-  public SentenceAnnotation(JCas jcas) {
+  public posSequenceCount(JCas jcas) {
     super(jcas);
     readObject();   
   } 
@@ -59,7 +58,7 @@ public class SentenceAnnotation extends Annotation {
    * @param begin offset to the begin spot in the SofA
    * @param end offset to the end spot in the SofA 
   */  
-  public SentenceAnnotation(JCas jcas, int begin, int end) {
+  public posSequenceCount(JCas jcas, int begin, int end) {
     super(jcas);
     setBegin(begin);
     setEnd(end);
@@ -75,6 +74,28 @@ public class SentenceAnnotation extends Annotation {
    */
   private void readObject() {/*default - does nothing empty block */}
      
-}
+ 
+    
+  //*--------------*
+  //* Feature: posSequenceCount
+
+  /** getter for posSequenceCount - gets 
+   * @generated
+   * @return value of the feature 
+   */
+  public String getPosSequenceCount() {
+    if (posSequenceCount_Type.featOkTst && ((posSequenceCount_Type)jcasType).casFeat_posSequenceCount == null)
+      jcasType.jcas.throwFeatMissing("posSequenceCount", "com.iai.uima.jcas.tcas.posSequenceCount");
+    return jcasType.ll_cas.ll_getStringValue(addr, ((posSequenceCount_Type)jcasType).casFeatCode_posSequenceCount);}
+    
+  /** setter for posSequenceCount - sets  
+   * @generated
+   * @param v value to set into the feature 
+   */
+  public void setPosSequenceCount(String v) {
+    if (posSequenceCount_Type.featOkTst && ((posSequenceCount_Type)jcasType).casFeat_posSequenceCount == null)
+      jcasType.jcas.throwFeatMissing("posSequenceCount", "com.iai.uima.jcas.tcas.posSequenceCount");
+    jcasType.ll_cas.ll_setStringValue(addr, ((posSequenceCount_Type)jcasType).casFeatCode_posSequenceCount, v);}    
+  }
 
     
