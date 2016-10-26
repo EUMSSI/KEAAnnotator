@@ -514,6 +514,8 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 		 HashSet<String> skipAsFinalPosTag = new HashSet<String>();
 		 HashSet<String> skipAsPreposition = new HashSet<String>();
 		 HashSet<String> postnominalPreposition = new HashSet<String>();
+		 boolean chunksFound = true;
+		 
 		 boolean postNominalAdjFilter;
 		 boolean advFilter;
 		 boolean verbFilter;
@@ -892,7 +894,9 @@ public class KeyPhraseAnnotator extends JCasAnnotator_ImplBase {
 			}
 			
 			if (!chunkFound){
-				EXTEND_KEYPHRASE_TO_CHUNK = false;
+//				EXTEND_KEYPHRASE_TO_CHUNK = false;
+//				System.out.println("NO_CHUNKS_FOUND");
+				chunksFound = false;
 			}
 		 }
 
@@ -1844,7 +1848,7 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 
 					
 					
-					if (EXTEND_KEYPHRASE_TO_CHUNK){	//not needed
+					if (EXTEND_KEYPHRASE_TO_CHUNK && chunksFound){	//NEW
 						kpBeginNew = -1;
 						kpEndNew = -1;
 						kpKeyPhraseNew = "";
@@ -1852,7 +1856,7 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 //						System.out.println("KP BEFORE CHUNK EXTENSION" + kpa.getCoveredText());
 						
 						
-						
+//						if (chunksFound){ //NEW
 						List <Chunk> chunks = JCasUtil.selectCovering(aJCas,
 								Chunk.class, kpa);
 						
@@ -2192,6 +2196,7 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 						} //for chunks
 						
 						
+						
 						String[] kpaSplit = kpKeyPhraseNew.split(" ");
 						
 						if (kpaSplit != null && kpaSplit.length > 1) {
@@ -2203,6 +2208,7 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 								continue KPA;
 							}
 						}
+						
 						
 //						if (LOAD_MANUAL_KEYPHRASES && manualKeyPhrases.contains(kpa.getCoveredText().toLowerCase())){
 ////							System.out.println("KPORIMANUAL" + kpa.getCoveredText());
@@ -2228,7 +2234,7 @@ MATCHLOWCASE:		while (matcherLowerCase.find()) {
 							kpKeyPhraseNew =upCapTolowCap.get(kpKeyPhraseNew);
 //							System.out.println("CORRECT CHUNK LOW CAP" + kpKeyPhraseNew);
 						}
-						
+//						} //if noChunksFound //NEW
 					} // EXTENDKEYPHRASETOCHUNK
 					
 					
